@@ -6,6 +6,7 @@ from simple_parsing.helpers import JsonSerializable
 from gfn.envs import Env
 from gfn.losses import FMParametrization, Parametrization, PFBasedParametrization
 from gfn.samplers import DiscreteActionsSampler, TrajectoriesSampler
+from gfn.losses.gg import GGParametrization
 
 
 @dataclass
@@ -20,7 +21,9 @@ class SamplerConfig(JsonSerializable):
         on_policy = (
             self.temperature == 1.0 and self.sf_bias == 0.0 and self.epsilon == 0.0
         )
-        if isinstance(parametrization, FMParametrization):
+        if isinstance(parametrization, FMParametrization) or isinstance(
+            parametrization, GGParametrization
+        ):
             estimator = parametrization.logF
         elif isinstance(parametrization, PFBasedParametrization):
             estimator = parametrization.logit_PF

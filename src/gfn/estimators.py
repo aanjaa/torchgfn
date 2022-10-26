@@ -1,9 +1,10 @@
 from abc import ABC
 from typing import Literal, Optional
 
+import torch
 from torchtyping import TensorType
 
-from gfn.containers import States
+from gfn.containers.states import States, correct_cast
 from gfn.envs import Env
 from gfn.envs.preprocessors.base import EnumPreprocessor
 from gfn.modules import GFNModule, NeuralNet, Tabular, Uniform, ZeroGFNModule
@@ -151,6 +152,33 @@ class LogitPBEstimator(FunctionEstimator):
             module_name=module_name,
             **nn_kwargs,
         )
+
+
+class LogitPBEstimatorFromStateFlow(LogitPBEstimator):
+    def __init__(self, logF: LogStateFlowEstimator):
+        self.logF = logF
+        self.env = logF.env
+
+    def __call__(self, states: States) -> OutputTensor:
+        out = torch.full(
+            states.batch_shape + (self.env.n_actions - 1,),
+            -float("inf"),
+            device=states.device,
+        )
+        _, states.backward_masks = correct_cast(
+            states.forward_masks, states.backward_masks
+        )
+        for i in range(self.env.n_actions - 1):
+            # states that accept i as a backward action
+            mask = states.backward_masks[..., i]
+            actions = torch.full(
+                states[mask].batch_shape, i, device=states.device, dtype=torch.long
+            )
+            # get the parents of the states that accept i as a backward action
+            parents = self.env.backward_step(states[mask], actions)
+            out[mask, i] = self.logF(parents).squeeze(-1)
+
+        return out
 
 
 class LogZEstimator:

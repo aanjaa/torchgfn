@@ -7,6 +7,9 @@ from tqdm import tqdm, trange
 
 from gfn.containers.replay_buffer import ReplayBuffer
 from gfn.utils import trajectories_to_training_samples, validate
+from gfn.losses import DetailedBalance
+from gfn.estimators import LogitPBEstimatorFromStateFlow
+from gfn.samplers import BackwardDiscreteActionsSampler
 
 parser = ArgumentParser()
 
@@ -34,6 +37,8 @@ parser.add_argument(
     default=False,
     help="If False (default), the pmf is obtained from the latest visited terminating states",
 )
+
+parser.add_argument("--gg", action="store_true", default=False)
 
 
 args = parser.parse_args()
@@ -78,6 +83,11 @@ visited_terminating_states = (
 
 states_visited = 0
 for i in trange(args.n_iterations):
+    if isinstance(loss_fn, DetailedBalance) and args.gg:
+        parametrization.logit_PB = LogitPBEstimatorFromStateFlow(parametrization.logF)
+        loss_fn.backward_actions_sampler = BackwardDiscreteActionsSampler(
+            parametrization.logit_PB
+        )
     trajectories = trajectories_sampler.sample(n_trajectories=args.batch_size)
     training_samples = trajectories_to_training_samples(trajectories, loss_fn)
     if replay_buffer is not None:

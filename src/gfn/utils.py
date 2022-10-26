@@ -10,7 +10,9 @@ from gfn.losses import (
     StateDecomposableLoss,
     TBParametrization,
     TrajectoryDecomposableLoss,
+    FlowMatching,
 )
+from gfn.losses.gg import GGLoss
 
 
 def trajectories_to_training_samples(
@@ -19,7 +21,9 @@ def trajectories_to_training_samples(
     """Converts a Trajectories container to a States, Transitions or Trajectories container,
     depending on the loss.
     """
-    if isinstance(loss_fn, StateDecomposableLoss):
+    if isinstance(loss_fn, GGLoss):
+        return trajectories.to_intermediary_and_terminating_states()
+    if isinstance(loss_fn, FlowMatching):
         # return trajectories.to_states()
         return trajectories.to_non_initial_intermediary_and_terminating_states()
     elif isinstance(loss_fn, TrajectoryDecomposableLoss):

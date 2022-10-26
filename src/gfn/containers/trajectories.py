@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Sequence, Tuple
 
 if TYPE_CHECKING:
     from gfn.envs import Env
@@ -272,7 +272,7 @@ class Trajectories(Container):
 
     def to_non_initial_intermediary_and_terminating_states(
         self,
-    ) -> tuple[States, States]:
+    ) -> Tuple[States, States]:
         """Returns a tuple of `States` objects from the trajectories, containing all non-initial intermediary and terminating states in the trajectories
 
         Returns:
@@ -283,4 +283,18 @@ class Trajectories(Container):
         intermediary_states = states[~states.is_sink_state & ~states.is_initial_state]
         terminating_states = self.last_states
         terminating_states = terminating_states[~terminating_states.is_initial_state]
+        return intermediary_states, terminating_states
+
+    def to_intermediary_and_terminating_states(
+        self,
+    ) -> Tuple[States, States]:
+        """Returns a tuple of `States` objects from the trajectories, containing all intermediary and terminating states in the trajectories
+
+        Returns:
+            Tuple[States, States]: - All the intermediary states in the trajectories.
+                                   - All the terminating states in the trajectories.
+        """
+        states = self.states[:-1][self.actions != self.env.n_actions - 1]
+        intermediary_states = states[~states.is_sink_state]
+        terminating_states = self.last_states
         return intermediary_states, terminating_states

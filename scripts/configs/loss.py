@@ -26,6 +26,7 @@ from gfn.losses import (
     TBParametrization,
     TrajectoryBalance,
 )
+from gfn.losses.gg import GGParametrization, GGLoss
 
 
 @dataclass
@@ -64,6 +65,22 @@ class FMLossConfig(BaseLossConfig):
         parametrization = FMParametrization(logF_edge)
 
         loss = FlowMatching(parametrization)
+
+        return parametrization, loss
+
+
+@dataclass
+class GGLossConfig(BaseLossConfig):
+    logF_state: GFNModuleConfig = GFNModuleConfig()
+
+    def parse(self, env: Env) -> Tuple[Parametrization, Loss]:
+        logF_state = LogStateFlowEstimator(
+            env=env,
+            **self.logF_state.nn_kwargs,
+        )
+        parametrization = GGParametrization(logF_state)
+
+        loss = GGLoss(parametrization)
 
         return parametrization, loss
 
@@ -185,8 +202,9 @@ class LossConfig(JsonSerializable):
             "DB": DBLossConfig,
             "TB": TBLossConfig,
             "SubTB": SubTBLossConfig,
+            "GG": GGLossConfig,
         },
-        default=TBLossConfig(),
+        default=DBLossConfig(),
     )
 
     def parse(self, env: Env) -> Tuple[Parametrization, Loss]:
