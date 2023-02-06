@@ -67,7 +67,6 @@ def test_FM(env_name: int, ndim: int, module_name: str):
         ("SubTB", "geometric_within"),
     ],
 )
-@pytest.mark.parametrize("forward_looking", [True, False])
 def test_PFBasedParametrization(
     env_name: str,
     ndim: int,
@@ -75,7 +74,6 @@ def test_PFBasedParametrization(
     tie_pb_to_pf: bool,
     parametrization_name: str,
     sub_tb_weighing: str,
-    forward_looking: bool,
 ):
     if env_name == "HyperGrid":
         env = HyperGrid(ndim=ndim, height=4)
@@ -89,9 +87,7 @@ def test_PFBasedParametrization(
     if tie_pb_to_pf:
         logit_PB.module.torso = logit_PF.module.torso
     logF = LogStateFlowEstimator(
-        env,
-        forward_looking=forward_looking,
-        module_name=module_name if module_name != "Uniform" else "Zero",
+        env, module_name=module_name if module_name != "Uniform" else "Zero"
     )
     logZ = LogZEstimator(torch.tensor(0.0))
 
@@ -168,7 +164,7 @@ def test_subTB_vs_TB(
 
     logit_PF = LogitPFEstimator(env, module_name=module_name)
     logit_PB = LogitPBEstimator(env, module_name=module_name)
-    logF = LogStateFlowEstimator(env, forward_looking=False, module_name="Zero")
+    logF = LogStateFlowEstimator(env, module_name="Zero")
     logZ = LogZEstimator(torch.tensor(0.0))
     actions_sampler = DiscreteActionsSampler(estimator=logit_PF)
     trajectories_sampler = TrajectoriesSampler(env, actions_sampler)
@@ -185,3 +181,8 @@ def test_subTB_vs_TB(
         print("TB loss", tb_loss)
         print("SubTB loss", subtb_loss)
         assert (tb_loss - subtb_loss).abs() < 1e-4
+
+
+test_PFBasedParametrization(
+    "DiscreteEBM", 3, "NeuralNet", False, "SubTB", "equal_within"
+)
