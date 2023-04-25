@@ -189,9 +189,7 @@ class Trajectories(Container):
             ].flip(0)
             new_states[
                 : trajectories.when_is_done[i] + 1, i
-            ] = trajectories.states.tensor[
-                : trajectories.when_is_done[i] + 1, i
-            ].flip(
+            ] = trajectories.states.tensor[: trajectories.when_is_done[i] + 1, i].flip(
                 0
             )
         new_states = trajectories.env.States(new_states)
