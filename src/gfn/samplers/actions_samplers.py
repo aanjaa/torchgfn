@@ -119,7 +119,19 @@ class DiscreteActionsSampler(ActionsSampler):
             probs = (1 - self.epsilon) * probs + self.epsilon * uniform_dist
         dist = Categorical(probs=probs)
         with torch.no_grad():
-            actions = dist.sample()
+            # See https://github.com/saleml/torchgfn/issues/51 for why we need this while loop
+            while True:
+                actions = dist.sample()
+                if isinstance(self, BackwardDiscreteActionsSampler):
+                    are_actions_valid = torch.gather(
+                        states.backward_masks, 1, actions.unsqueeze(-1)
+                    )
+                else:
+                    are_actions_valid = torch.gather(
+                        states.forward_masks, 1, actions.unsqueeze(-1)
+                    )
+                if torch.all(are_actions_valid).item():
+                    break
         actions_log_probs = dist.log_prob(actions)
 
         return actions_log_probs, actions
