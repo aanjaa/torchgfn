@@ -520,6 +520,11 @@ if __name__ == "__main__":
     alpha = torch.FloatTensor([[1.0], [1.0], [1.0]])
     beta = torch.FloatTensor([[1.1], [1.0], [1.0]])
 
+    # Make the centers a States instance.
+    env = BoxEnv(delta=delta)
+    States = env.make_States_class()
+    centers = States(centers)
+
     northeastern = True
     dist = QuarterCircle(
         delta=delta,
@@ -534,29 +539,30 @@ if __name__ == "__main__":
     samples = dist.sample(sample_shape=(n_samples,))
     print(dist.log_prob(samples))
 
-    # plot the [0, 1] x [0, 1] square, and the centers,
-    import matplotlib.pyplot as plt
+    # Turn this off for now.
+    # # plot the [0, 1] x [0, 1] square, and the centers,
+    # import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots()
-    ax.set_xlim([-0.2, 1.2])
-    ax.set_ylim([-0.2, 1.2])
+    # fig, ax = plt.subplots()
+    # ax.set_xlim([-0.2, 1.2])
+    # ax.set_ylim([-0.2, 1.2])
 
-    # plot circles of radius delta around each center and around (0, 0)
-    for i in range(centers.shape[0]):
-        ax.add_patch(
-            plt.Circle(centers[i], delta, fill=False, color="red", linestyle="dashed")
-        )
-    ax.add_patch(plt.Circle([0, 0], delta, fill=False, color="red", linestyle="dashed"))
+    # # plot circles of radius delta around each center and around (0, 0)
+    # for i in range(centers.batch_shape[0]):
+    #     ax.add_patch(
+    #         plt.Circle(centers[i], delta, fill=False, color="red", linestyle="dashed")
+    #     )
+    # ax.add_patch(plt.Circle([0, 0], delta, fill=False, color="red", linestyle="dashed"))
 
-    # add each center to its corresponding sampled actions and plot them
-    for i in range(centers.shape[0]):
-        ax.scatter(
-            samples[:, i, 0] + centers[i, 0],
-            samples[:, i, 1] + centers[i, 1],
-            s=0.2,
-            marker="x",
-        )
-        ax.scatter(centers[i, 0], centers[i, 1], color="red")
+    # # add each center to its corresponding sampled actions and plot them
+    # for i in range(centers.shape[0]):
+    #     ax.scatter(
+    #         samples[:, i, 0] + centers[i, 0],
+    #         samples[:, i, 1] + centers[i, 1],
+    #         s=0.2,
+    #         marker="x",
+    #     )
+    #     ax.scatter(centers[i, 0], centers[i, 1], color="red")
 
     northeastern = False
     dist_backward = QuarterCircle(
@@ -571,16 +577,17 @@ if __name__ == "__main__":
     samples_backward = dist_backward.sample(sample_shape=(n_samples,))
     print(dist_backward.log_prob(samples_backward))
 
-    # add to the plot a subtraction of the sampled actions from the centers, and plot them
-    for i in range(centers[1:].shape[0]):
-        ax.scatter(
-            centers[1:][i, 0] - samples_backward[:, i, 0],
-            centers[1:][i, 1] - samples_backward[:, i, 1],
-            s=0.2,
-            marker="x",
-        )
+    # # add to the plot a subtraction of the sampled actions from the centers, and plot them
+    # for i in range(centers[1:].shape[0]):
+    #     ax.scatter(
+    #         centers[1:][i, 0] - samples_backward[:, i, 0],
+    #         centers[1:][i, 1] - samples_backward[:, i, 1],
+    #         s=0.2,
+    #         marker="x",
+    #     )
 
     quarter_disk_dist = QuarterDisk(
+        batch_shape=centers.batch_shape,
         delta=delta,
         mixture_logits=torch.FloatTensor([0.0]),
         alpha_r=torch.FloatTensor([1.0]),
@@ -593,8 +600,7 @@ if __name__ == "__main__":
     print(quarter_disk_dist.log_prob(samples_disk))
 
     # add to the plot samples_disk
-    ax.scatter(samples_disk[:, 0], samples_disk[:, 1], s=0.1, marker="x")
-
+    # ax.scatter(samples_disk[:, 0], samples_disk[:, 1], s=0.1, marker="x")
     # plt.show()
 
     quarter_circle_with_exit_dist = QuarterCircleWithExit(
@@ -607,5 +613,4 @@ if __name__ == "__main__":
     )
 
     samples_exit = quarter_circle_with_exit_dist.sample(sample_shape=(n_samples,))
-
     print(samples_exit)
