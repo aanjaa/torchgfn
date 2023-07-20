@@ -23,7 +23,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--loss",
         type=str,
-        default="trajectory-balance",
+        default="detailed-balance",
         help="Name of the loss config to load. Must exist as ./loss/{loss}.yaml."
         + " Note that ./loss/base.yaml is always loaded first, "
         + "even if this argument is not specified.",

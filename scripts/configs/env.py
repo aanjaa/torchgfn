@@ -12,7 +12,10 @@ class HyperGridConfig:
     R0: float = 0.1
     R1: float = 0.5
     R2: float = 2.0
-    reward_cos: bool = False
+    reward_name: Literal["cos","gmm-grid","gmm-random","center","corner","default"] = "default"
+    num_means: int = 4
+    cov_scale: float = 7.0
+    quantize_bins: int = -1
     preprocessor_name: Literal["KHot", "OneHot", "Identity"] = "KHot"
 
     def parse(self, device_str: Literal["cpu", "cuda"]) -> Env:
@@ -22,7 +25,10 @@ class HyperGridConfig:
             R0=self.R0,
             R1=self.R1,
             R2=self.R2,
-            reward_cos=self.reward_cos,
+            reward_name=self.reward_name,
+            num_means=self.num_means,
+            cov_scale=self.cov_scale,
+            quantize_bins=self.quantize_bins,
             device_str=device_str,
             preprocessor_name=self.preprocessor_name,
         )

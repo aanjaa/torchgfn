@@ -1,0 +1,25 @@
+Failure # 1 (occurred at 2023-07-20_12-00-39)
+[36mray::ImplicitFunc.train()[39m (pid=2683706, ip=192.168.1.2, actor_id=e010eabb9fbd29e2e490d40d01000000, repr=func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/anja/anaconda3/envs/gflownets/lib/python3.11/site-packages/ray/tune/trainable/trainable.py", line 389, in train
+    raise skipped from exception_cause(skipped)
+  File "/home/anja/anaconda3/envs/gflownets/lib/python3.11/site-packages/ray/tune/trainable/function_trainable.py", line 336, in entrypoint
+    return self._trainable_func(
+           ^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/anja/anaconda3/envs/gflownets/lib/python3.11/site-packages/ray/tune/trainable/function_trainable.py", line 653, in _trainable_func
+    output = fn()
+             ^^^^
+  File "/home/anja/Documents/GFlowNets/torchgfn/train.py", line 41, in train
+    trajectories = trajectories_sampler.sample(n_trajectories=config["batch_size"])
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/anja/Documents/GFlowNets/torchgfn/src/gfn/samplers/trajectories_sampler.py", line 128, in sample
+    return self.sample_trajectories(n_trajectories=n_trajectories)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/anja/Documents/GFlowNets/torchgfn/src/gfn/samplers/trajectories_sampler.py", line 86, in sample_trajectories
+    new_states = self.env.step(states, actions)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/anja/Documents/GFlowNets/torchgfn/src/gfn/envs/env.py", line 175, in step
+    raise NonValidActionsError("Actions are not valid")
+gfn.envs.env.NonValidActionsError: Actions are not valid

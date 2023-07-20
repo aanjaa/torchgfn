@@ -44,11 +44,7 @@ class SamplerConfig:
 def make_sampler(
     config: dict, env: Env, parametrization: Parametrization
 ) -> Tuple[TrajectoriesSampler, bool]:
-    name = config["sampler"]["name"]
-    if not name:
-        sampler_class = SamplerConfig
-    else:
-        raise ValueError("Invalid sampler name: {}".format(name))
+    sampler_class = SamplerConfig
 
     args = inspect.getfullargspec(sampler_class.__init__).args
     sampler_config = {k: v for k, v in config["sampler"].items() if k in args}
