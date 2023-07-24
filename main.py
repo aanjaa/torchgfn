@@ -80,7 +80,7 @@ if __name__ == "__main__":
                           'R0': 0.1,
                           'R1': 0.5,
                           'R2': 2.0,
-                          'reward_name': 'gmm-grid',  # ["cos","gmm-grid","gmm-random","center","corner","default"]
+                          'reward_name': 'corner',  # ["cos","gmm-grid","gmm-random","center","corner","default"]
                           'num_means': 4,
                           'cov_scale': 7.0,
                           'quantize_bins': 5,
