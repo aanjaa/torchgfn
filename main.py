@@ -69,8 +69,8 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--experiment_name", type=str, default="reward_losses") #smoothness_losses "reward_losses" "searchspaces_losses"
     parser.add_argument("--name", type=str, default="test")
-    parser.add_argument("--local_debug", type=bool, default=False)
-    parser.add_argument("--use_wandb", type=bool, default=True)
+    parser.add_argument("--local_debug", type=bool, default=True)
+    parser.add_argument("--use_wandb", type=bool, default=False)
     args = parser.parse_args()
 
     # Makes it easier to debug
@@ -96,7 +96,7 @@ if __name__ == "__main__":
                            'name': 'detailed-balance'
                            },
                   'optim': {'lr': 0.001, 'lr_Z': 0.1, 'betas': [0.9, 0.999], 'name': 'adam'},
-                  'sampler': {'temperature': 1.0, 'sf_bias': 0.0, 'epsilon': 0.0},
+                  'sampler': {'temperature': 1.7, 'sf_bias': 7.0, 'epsilon': 7.0},
                   'seed': 0,
                   'batch_size': 16,
                   'n_iterations': 1001,  # 1001,
