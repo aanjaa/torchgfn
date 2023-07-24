@@ -21,9 +21,8 @@ from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import matplotlib.ticker as ticker
-from raytune import get_config
 from train import train
-
+from raytune import EXPERIMENT_NAMES
 def plot(reward,states,im_show):
     reward = reward.numpy()
     x = states.states_tensor[:, :, 0]
@@ -59,10 +58,10 @@ def run_train(config,use_wandb,im_show):
     states = env.build_grid()
     reward = env.reward(states)
     fig2d, fig3d = plot(reward, states, im_show)
-
     if use_wandb:
         wandb.log({"2d": wandb.Image(fig2d), "3d": wandb.Image(fig3d)})
         wandb.finish()
+    del fig3d,fig2d
 
 
 if __name__ == "__main__":
@@ -75,7 +74,6 @@ if __name__ == "__main__":
 
     # Makes it easier to debug
     if args.local_debug:
-        #config = get_config()
         config = {'env': {'device': 'cpu',
                           'ndim': 2,
                           'height': 32,
@@ -85,7 +83,7 @@ if __name__ == "__main__":
                           'reward_name': 'gmm-grid',  # ["cos","gmm-grid","gmm-random","center","corner","default"]
                           'num_means': 4,
                           'cov_scale': 7.0,
-                          'quantize_bins': 4,
+                          'quantize_bins': 5,
                           'preprocessor_name': 'KHot',
                           'name': 'hypergrid'},
                   'loss': {'module_name': 'NeuralNet',
@@ -96,10 +94,10 @@ if __name__ == "__main__":
                            'name': 'detailed-balance'
                            },
                   'optim': {'lr': 0.001, 'lr_Z': 0.1, 'betas': [0.9, 0.999], 'name': 'adam'},
-                  'sampler': {'temperature': 1.7, 'sf_bias': 7.0, 'epsilon': 7.0},
+                  'sampler': {'temperature': 1.0, 'sf_bias': 0.0, 'epsilon': 0.0},
                   'seed': 0,
                   'batch_size': 16,
-                  'n_iterations': 1001,  # 1001,
+                  'n_iterations': 101,  # 1001,
                   'replay_buffer_size': 0,
                   'no_cuda': False,
                   'name': 'debug',
@@ -117,7 +115,7 @@ if __name__ == "__main__":
             with open(os.path.join(best_config_dir + "/best_config.json"), 'r') as fp:
                 config = json.load(fp)
                 # Rerun for 3 different seeds
-                for seed in range(100,102):
+                for seed in range(100,103):
                     config["seed"] = seed
                     run_train(config,args.use_wandb,im_show=False)
 

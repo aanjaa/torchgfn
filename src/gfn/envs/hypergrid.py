@@ -201,9 +201,11 @@ class HyperGrid(Env):
         if self.quantize_bins == -1 or reward.numel() == 0:
             return reward
         else:
-            bins = torch.linspace(self.min_reward_value,self.max_reward_value, self.quantize_bins)
-            indices = torch.bucketize(reward,bins)
-            reward = bins[indices]
+            boundaries = torch.linspace(self.min_reward_value,self.max_reward_value, self.quantize_bins+1)
+            indices = torch.bucketize(reward,boundaries,right = True)
+            # if element of list is greater than len(boundaries) reduce value by 1
+            indices[indices > (len(boundaries)-1)] = len(boundaries)-1
+            reward = boundaries[indices]
             return reward
 
 
@@ -302,10 +304,10 @@ class HyperGrid(Env):
 
     def generate_mean_in_corner(self):
         """
-        Function that generates a mean in the starting corner of the grid.
+        Function that generates a mean in the corner of the grid.
         ndim: number of dimensions
         """
-        mean = np.zeros(self.ndim)
+        mean = np.ones(self.ndim)*self.height-self.offset
         return mean
 
     def generate_means_random(self):

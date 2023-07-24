@@ -1,2 +1,0 @@
-loss,states_visited,l1_dist,time_this_iter_s,done,training_iteration,trial_id,date,timestamp,time_total_s,pid,hostname,node_ip,time_since_restore,iterations_since_restore
-0.04200911149382591,16016,0.001953125,178.86276960372925,False,1,95b96_00005,2023-07-20_12-26-55,1689848815,178.86276960372925,2772873,anja-ThinkPad-X1-Extreme-Gen-3,192.168.1.2,178.86276960372925,1
