@@ -7,6 +7,8 @@ from tqdm import tqdm, trange
 import torch
 
 def train(config,use_wandb):
+    torch.manual_seed(config["seed"])
+
     if config["no_cuda"]:
         device_str = "cpu"
     else:
@@ -43,10 +45,34 @@ def train(config,use_wandb):
         # print(trajectories.last_states.states_tensor)
         training_samples = trajectories_to_training_samples(trajectories, loss_fn)
         if replay_buffer is not None:
-            replay_buffer.add(training_samples)
-            training_objects = replay_buffer.sample(n_trajectories=config["batch_size"])
+            with torch.no_grad():
+                replay_buffer.add(training_samples)
+                training_objects = replay_buffer.sample(n_trajectories=config["batch_size"])
         else:
             training_objects = training_samples
+
+
+        #samples_last_states = training_samples.last_states.states_tensor
+        #buffer_last_states = replay_buffer.training_objects.last_states.states_tensor
+        #all_last_states = torch.cat([samples_last_states, buffer_last_states])
+
+
+        #buffer = torch.tensor([[0,0],[1,1],[2,2]])
+        #new_samples = torch.tensor([[1,2],[3,4]])
+        ## First vmap for every new sample
+        #batched_func = torch.vmap(lambda x, y: torch.abs(x - y).sum(),in_dims=(0,None))#(buffer,new_samples[0])
+        ## Vmap over all new samples
+        #distances = torch.vmap(batched_func,in_dims=(None,0))(all_last_states,samples_last_states)
+        ## Get one number per new sample
+        #distances = distances.sum(dim=1)
+
+        # Take highest K elements from the distances vector
+        #distances
+        # Calculate distances between new samples and buffer + new samples
+        # Keep in replay buffer only samples with highest distances
+        # print(training_objects.actions)
+        # print(training_objects.next_states.states_tensor)
+        # print(training_objects.rewards)
 
         optimizer.zero_grad()
         loss = loss_fn(training_objects)
