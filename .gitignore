@@ -180,7 +180,7 @@ wandb/
 logs/
 
 # slurm-specific stuff
-*.sh
+# *.sh
 *.out
 
 scripts.py
