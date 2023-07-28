@@ -11,4 +11,4 @@ source venvs/torchgfn/bin/activate
 
 export PYTHONPATH=$PYTHONPATH:/$HOME/torchgfn/src
 
-python raytune.py
+python torchgfn/raytune.py
