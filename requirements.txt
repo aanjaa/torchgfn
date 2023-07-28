@@ -1,6 +1,13 @@
-torch
-matplotlib
+#pip install torch torchvision torchaudio --no-cache-dir
+#pip install wandb
+#pip install torchtyping
+# pip install gymnasium
+# pip install einops
+
+einops>=0.6.1
+gymnasium>=0.28.1
+numpy>=1.21.2
+torch>=1.9.0
+torchtyping>=0.1.4
 wandb
-tqdm
-ray[air]
 
