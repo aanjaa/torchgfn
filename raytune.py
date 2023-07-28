@@ -80,7 +80,7 @@ def run_tune(search_space, num_samples):
     experiment_name = search_space["experiment_name"]
     name = search_space["name"]
 
-    local_dir = os.path.join(os.getcwd(), "logs")
+    local_dir = os.path.join(os.getcwd(), "logs_debug")
     log_dir = os.path.join(local_dir, experiment_name, name)
     try:
         os.makedirs(log_dir)
@@ -104,8 +104,7 @@ def run_tune(search_space, num_samples):
             # search_alg=OptunaSearch(mode="min", metric="valid_loss_outer"),
             # search_alg=Repeater(OptunaSearch(mode="min", metric="valid_loss_outer"), repeat=2),
         ),
-        run_config=air.RunConfig(name="details", verbose=1,
-                                 local_dir=log_dir)
+        run_config=air.RunConfig(name="details", verbose=0,local_dir=log_dir)
     )
 
     results = tuner.fit()

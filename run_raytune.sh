@@ -7,8 +7,8 @@
 
 module load python/3.10
 
-source venvs/torchgfn/bin/activate
+source /$HOME/venvs/torchgfn/bin/activate
 
 export PYTHONPATH=$PYTHONPATH:/$HOME/torchgfn/src
 
-python torchgfn/raytune.py
+python raytune.py
