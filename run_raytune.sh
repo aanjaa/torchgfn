@@ -10,8 +10,6 @@
 #SBATCH --nodes=4
 #SBATCH --exclusive
 #SBATCH --tasks-per-node=1
-### Modify this according to your Ray workload.
-#SBATCH --mem-per-cpu=1GB
 
 
 module load python/3.10
