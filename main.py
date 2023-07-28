@@ -91,14 +91,15 @@ if __name__ == "__main__":
                            'hidden_dim': 256,
                            'activation_fn': 'relu',
                            'forward_looking': False,
-                           'name': 'detailed-balance'
+                           'name': 'flowmatching' #'sub-tb',
                            },
                   'optim': {'lr': 0.001, 'lr_Z': 0.1, 'betas': [0.9, 0.999], 'name': 'adam'},
                   'sampler': {'temperature': 1.0, 'sf_bias': 0.0, 'epsilon': 0.0},
                   'seed': 0,
                   'batch_size': 16,
                   'n_iterations': 201,  # 1001,
-                  'replay_buffer_size': 10,
+                  'replay_buffer_size': 1000,
+                  'replay_buffer_name': 'dist',  # 'dist','fifo'
                   'no_cuda': False,
                   'name': 'debug',
                   'experiment_name': 'debug',

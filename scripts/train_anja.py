@@ -32,6 +32,7 @@ if __name__ == "__main__":
      'batch_size': 16,
      'n_iterations': 1000,
      'replay_buffer_size': 0,
+     'replay_buffer_name': 'dist', # 'dist','fifo'
      'no_cuda': False,
      'wandb': '',#'gflownets',
      'validation_interval': 100,
