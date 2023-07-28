@@ -1,6 +1,6 @@
 #!/bin/bash
 #!/bin/bash
-#SBATCH --job-name=my-workload
+#SBATCH --job-name=followdoc
 
 ### Modify this according to your Ray workload.
 #SBATCH --nodes=4
