@@ -3,6 +3,8 @@
 #pip install torchtyping
 # pip install gymnasium
 # pip install einops
+#pip install -U "ray[air]"
+
 
 einops>=0.6.1
 gymnasium>=0.28.1
@@ -10,4 +12,8 @@ numpy>=1.21.2
 torch>=1.9.0
 torchtyping>=0.1.4
 wandb
+ray[air]
+scipy
+matplotlib
+tqdm
 
