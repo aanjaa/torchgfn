@@ -16,41 +16,44 @@ REPLAY_BUFFER_NAMES = ["fifo", "dist"]
 average_over_multiple_seeds = False
 num_samples = 1
 
-CONFIG = {'env': {'device': 'cpu',
-                  'ndim': 2,
-                  'height': 32,
-                  'R0': 0.1,
-                  'R1': 0.5,
-                  'R2': 2.0,
-                  'reward_name': 'gmm-grid',  # ["cos","gmm-grid","gmm-random","center","corner","default"]
-                  'num_means': 4,
-                  'cov_scale': 7.0,
-                  'quantize_bins': -1,
-                  'preprocessor_name': 'KHot',
-                  'name': 'hypergrid'},
-          'loss': {'module_name': 'NeuralNet',
-                   'n_hidden_layers': 2,
-                   'hidden_dim': 256,
-                   'activation_fn': 'relu',
-                   'forward_looking': False,
-                   'name': 'detailed-balance'
-                   },
-          'optim': {'lr': 0.001, 'lr_Z': 0.1, 'betas': [0.9, 0.999], 'name': 'adam'},
-          'sampler': {'temperature': 1.0, 'sf_bias': 0.0, 'epsilon': 0.0},
-          'seed': 0,
-          'batch_size': 16,
-          'n_iterations': 1001,  # 1001,
-          'replay_buffer_size': 0,
-          'replay_buffer_name': 'fifo',
-          'no_cuda': False,
-          'name': 'debug',
-          'experiment_name': 'debug',
-          'validation_interval': 100,
-          'validation_samples': 10000,  # 200000,
-          'resample_for_validation': False}
+def get_config():
+    CONFIG = {'env': {'device': 'cpu',
+                      'ndim': 2,
+                      'height': 32,
+                      'R0': 0.1,
+                      'R1': 0.5,
+                      'R2': 2.0,
+                      'reward_name': 'gmm-grid',  # ["cos","gmm-grid","gmm-random","center","corner","default"]
+                      'num_means': 4,
+                      'cov_scale': 7.0,
+                      'quantize_bins': -1,
+                      'preprocessor_name': 'KHot',
+                      'name': 'hypergrid'},
+              'loss': {'module_name': 'NeuralNet',
+                       'n_hidden_layers': 2,
+                       'hidden_dim': 256,
+                       'activation_fn': 'relu',
+                       'forward_looking': False,
+                       'name': 'detailed-balance'
+                       },
+              'optim': {'lr': 0.001, 'lr_Z': 0.1, 'betas': [0.9, 0.999], 'name': 'adam'},
+              'sampler': {'temperature': 1.0, 'sf_bias': 0.0, 'epsilon': 0.0},
+              'seed': 0,
+              'batch_size': 16,
+              'n_iterations': 1001,  # 1001,
+              'replay_buffer_size': 0,
+              'replay_buffer_name': 'fifo',
+              'no_cuda': False,
+              'name': 'debug',
+              'experiment_name': 'debug',
+              'validation_interval': 100,
+              'validation_samples': 10000,  # 200000,
+              'resample_for_validation': False}
+    return CONFIG
 
-def change_config(config, name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed, experiment_name,
+def change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed, experiment_name,
                   replay_buffer_size, replay_buffer_name, n_hidden_layers, hidden_dim, sampler_temperature, sampler_epsilon):
+    config = get_config()
     changes = {
         "name": name,
         "env.ndim": ndim,
@@ -171,13 +174,14 @@ if __name__ == "__main__":
     def run_hypergrid_experiment(experiment_name):
 
         lr = tune.grid_search([0.1, 0.03, 0.01, 0.003, 0.001, 0.0003, 0.0001])
-        #lr = 0.001
+        #lr = tune.grid_search([0.01, 0.001])
         if average_over_multiple_seeds:
             seed = tune.grid_search(list(range(3)))
         else:
             seed = 0
 
         search_spaces = []
+
         if experiment_name == "reward_losses":
             ndim = 2
             quantize_bins = -1
@@ -198,7 +202,7 @@ if __name__ == "__main__":
                     name = f"{reward_name}_{loss_name}"
 
                     search_spaces.append(
-                        change_config(CONFIG, name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
+                        change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
                                       experiment_name, replay_buffer_size, replay_buffer_name, n_hidden_layers,
                                       hidden_dim, sampler_temperature, sampler_epsilon))
 
@@ -217,7 +221,7 @@ if __name__ == "__main__":
                 for ndim, height in zip([2, 4], [8, 32]):
                     name = "default_" + f"{ndim}d_{height}h_{loss_name}"
                     search_spaces.append(
-                        change_config(CONFIG, name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
+                        change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
                                       experiment_name, replay_buffer_size, replay_buffer_name, n_hidden_layers,
                                       hidden_dim, sampler_temperature, sampler_epsilon))
 
@@ -237,7 +241,7 @@ if __name__ == "__main__":
             for quantize_bins in [-1, 4, 10]:
                 name = "default_" + f"{quantize_bins}bins"
                 search_spaces.append(
-                    change_config(CONFIG, name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
+                    change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
                                   experiment_name, replay_buffer_size, replay_buffer_name, n_hidden_layers, hidden_dim,
                                   sampler_temperature, sampler_epsilon))
 
@@ -257,7 +261,7 @@ if __name__ == "__main__":
                     for replay_buffer_name in REPLAY_BUFFER_NAMES:
                         name = f"nhid{n_hidden_layers}_dimhid{hidden_dim}_rp_size{replay_buffer_size}_rp_name{replay_buffer_name}"
                         search_spaces.append(
-                            change_config(CONFIG, name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
+                            change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
                                           experiment_name, replay_buffer_size, replay_buffer_name, n_hidden_layers,
                                           hidden_dim, sampler_temperature, sampler_epsilon))
 
@@ -276,7 +280,7 @@ if __name__ == "__main__":
                 for sampler_epsilon in [0.0, 0.1, 0.5]:
                     name = f"temp{sampler_temperature}_eps{sampler_epsilon}"
                     search_spaces.append(
-                        change_config(CONFIG, name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
+                        change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
                                       experiment_name, replay_buffer_size, replay_buffer_name, n_hidden_layers,
                                       hidden_dim, sampler_temperature, sampler_epsilon))
 
@@ -287,10 +291,11 @@ if __name__ == "__main__":
             raise ValueError("Invalid experiment name")
 
         for search_space in search_spaces:
-            try:
-                run_tune(search_space, num_samples)
-            except:
-                print("Error in experiment ", experiment_name, " with search space ", search_space)
+            run_tune(search_space, num_samples)
+            # try:
+            #     run_tune(search_space, num_samples)
+            # except:
+            #     print("Error in experiment ", experiment_name, " with search space ", search_space)
 
 
     for experiment in EXPERIMENT_NAMES:
