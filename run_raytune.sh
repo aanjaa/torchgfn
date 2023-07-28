@@ -1,15 +1,20 @@
 #!/bin/bash
-#SBATCH --partition=unkillable                           # Ask for unkillable job
-#SBATCH --cpus-per-task=2                                # Ask for 2 CPUs
-#SBATCH --gres=gpu:1                                     # Ask for 1 GPU
-#SBATCH --mem=10G                                        # Ask for 10 GB of RAM
-#SBATCH --time=24:00:00                                   # The job will run for 24 hours
-
-# For raytune
+#!/bin/bash
 #SBATCH --job-name=my-workload
+
+### Modify this according to your Ray workload.
 #SBATCH --nodes=4
 #SBATCH --exclusive
+
 #SBATCH --tasks-per-node=1
+
+### Modify this according to your Ray workload.
+#SBATCH --cpus-per-task=5
+#SBATCH --mem-per-cpu=1GB
+### Similarly, you can also specify the number of GPUs per node.
+### Modify this according to your Ray workload. Sometimes this
+### should be 'gres' instead.
+#SBATCH --gpus-per-task=1
 
 
 module load python/3.10
