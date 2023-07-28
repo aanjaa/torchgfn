@@ -40,7 +40,7 @@ def get_config():
               'sampler': {'temperature': 1.0, 'sf_bias': 0.0, 'epsilon': 0.0},
               'seed': 0,
               'batch_size': 16,
-              'n_iterations': 1001,  # 1001,
+              'n_iterations': 1,  # 1001,
               'replay_buffer_size': 0,
               'replay_buffer_name': 'fifo',
               'no_cuda': False,
@@ -104,10 +104,28 @@ def run_tune(search_space, num_samples):
             # search_alg=OptunaSearch(mode="min", metric="valid_loss_outer"),
             # search_alg=Repeater(OptunaSearch(mode="min", metric="valid_loss_outer"), repeat=2),
         ),
-        #run_config=air.RunConfig(name="details", verbose=0,local_dir=log_dir)
+        run_config=air.RunConfig(name="details", verbose=0,local_dir=log_dir)
     )
 
+    # Generate txt files
     results = tuner.fit()
+    if results.errors:
+        print("One of the trials failed!")
+    else:
+        print("No errors!")
+    if results.errors:
+        with open(os.path.join(local_dir, "error.txt"), 'w') as file:
+            file.write(f"Experiment {experiment_name} failed for {name} with errors {results.errors}")
+
+    with open(os.path.join(log_dir + "/summary.txt"), 'w') as file:
+        for i, result in enumerate(results):
+            if result.error:
+                file.write(f"Trial #{i} had an error: {result.error} \n")
+                continue
+
+            file.write(
+                f"Trial #{i} finished successfully with a {metric} metric of: {result.metrics[metric]} \n")
+
 
     if not average_over_multiple_seeds:
         config = results.get_best_result().config
