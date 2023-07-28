@@ -104,7 +104,7 @@ def run_tune(search_space, num_samples):
             # search_alg=OptunaSearch(mode="min", metric="valid_loss_outer"),
             # search_alg=Repeater(OptunaSearch(mode="min", metric="valid_loss_outer"), repeat=2),
         ),
-        run_config=air.RunConfig(name="details", verbose=0,local_dir=log_dir)
+        #run_config=air.RunConfig(name="details", verbose=0,local_dir=log_dir)
     )
 
     results = tuner.fit()
