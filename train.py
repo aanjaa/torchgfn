@@ -17,6 +17,8 @@ def train(config,use_wandb):
         device_str = "cuda" if torch.cuda.is_available() else "cpu"
 
     config["device"] = device_str
+    experiment_name = config["experiment_name"]
+    name = config["name"]
 
     env = make_env(config)
     parametrization, loss_fn = make_loss(config, env)
@@ -31,8 +33,8 @@ def train(config,use_wandb):
         ) #always keep trajectories so that you can compare them for the dist replay buffer name
 
     if use_wandb:
-        wandb.init(project=config["experiment_name"], name=config["name"])
-        wandb.config.update(config)
+        wandb.init(project=experiment_name, name=name,config=config)
+        #wandb.config.update(config)
 
     visited_terminating_states = (
         env.States.from_batch_shape((0,))
@@ -129,6 +131,6 @@ def train(config,use_wandb):
             if use_wandb:
                 wandb.log(validation_info, step=i)
             to_log.update(validation_info)
-            tqdm.write(f"{i}: {to_log}")
+            tqdm.write(f"{i}: {to_log}, {experiment_name}, name: {name}")
 
     return to_log

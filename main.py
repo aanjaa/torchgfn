@@ -13,6 +13,7 @@ from matplotlib import cbook
 from matplotlib import cm
 from matplotlib.colors import LightSource
 import os
+from utils import convert_str_to_bool
 
 
 import pandas as pd
@@ -66,11 +67,19 @@ def run_train(config,use_wandb,im_show):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--experiment_name", type=str, default="reward_losses") #smoothness_losses "reward_losses" "searchspaces_losses"
-    parser.add_argument("--name", type=str, default="test")
-    parser.add_argument("--local_debug", type=bool, default=True)
-    parser.add_argument("--use_wandb", type=bool, default=False)
+    parser.add_argument("--experiment_name", type=str, default="smoothness_losses") #smoothness_losses "reward_losses" "searchspaces_losses"
+    parser.add_argument("--local_debug", type=str, default="true")
+    parser.add_argument("--use_wandb", type=str, default="true")
     args = parser.parse_args()
+
+    args_to_convert = [
+            key for key,val in vars(args).items() if val in ["true", "false"]]
+    args = convert_str_to_bool(args, args_to_convert)
+
+
+    print("local_debug {}".format(args.local_debug))
+    print("use_wandb {}".format(args.use_wandb))
+    print(args.experiment_name)
 
     # Makes it easier to debug
     if args.local_debug:
@@ -101,8 +110,8 @@ if __name__ == "__main__":
                   'replay_buffer_size': 1000,
                   'replay_buffer_name': 'dist',  # 'dist','fifo'
                   'no_cuda': False,
-                  'name': 'debug',
-                  'experiment_name': 'debug',
+                  'name': 'debug_local_main',
+                  'experiment_name': 'debug_local_main',
                   'validation_interval': 100,
                   'validation_samples': 200000,
                   'resample_for_validation': False}

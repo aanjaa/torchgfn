@@ -11,4 +11,11 @@ source ~/venvs/torchgfn/bin/activate
 
 export PYTHONPATH=$PYTHONPATH:/$HOME/torchgfn/src
 
-python main.py --local_debug false --use_wandb true --experiment_name searchspaces_losses
+experiment_names=("smoothness_losses" "reward_losses")
+
+# Loop over the elements in the array
+for experiment_name in "${experiment_names[@]}"; do
+  echo "$experiment_name"
+  python main.py --experiment_name "$experiment_name" --local_debug false --use_wandb true
+done
+

@@ -11,7 +11,7 @@ from utils import replace_dict_key
 
 REWARD_NAMES = ["cos", "gmm-grid", "gmm-random", "center", "default", "corner"]
 LOSS_NAMES = ["flowmatching", "detailed-balance", "trajectory-balance", "sub-tb"]
-EXPERIMENT_NAMES = ["reward_losses", "smoothness_losses", "searchspaces_losses", "replay_and_capacity","exploration_strategies"]
+EXPERIMENT_NAMES = ["reward_losses", "smoothness_losses", "searchspaces_losses", "replay_and_capacity", "exploration_strategies"][3:]
 REPLAY_BUFFER_NAMES = ["fifo", "dist"]
 average_over_multiple_seeds = False
 num_samples = 1
@@ -40,7 +40,7 @@ def get_config():
               'sampler': {'temperature': 1.0, 'sf_bias': 0.0, 'epsilon': 0.0},
               'seed': 0,
               'batch_size': 16,
-              'n_iterations': 1,  # 1001,
+              'n_iterations': 1001,  # 1001,
               'replay_buffer_size': 0,
               'replay_buffer_name': 'fifo',
               'no_cuda': False,
@@ -80,7 +80,7 @@ def run_tune(search_space, num_samples):
     experiment_name = search_space["experiment_name"]
     name = search_space["name"]
 
-    local_dir = os.path.join(os.getcwd(), "logs_debug")
+    local_dir = os.path.join(os.getcwd(), "logs_missing")
     log_dir = os.path.join(local_dir, experiment_name, name)
     try:
         os.makedirs(log_dir)
@@ -104,13 +104,13 @@ def run_tune(search_space, num_samples):
             # search_alg=OptunaSearch(mode="min", metric="valid_loss_outer"),
             # search_alg=Repeater(OptunaSearch(mode="min", metric="valid_loss_outer"), repeat=2),
         ),
-        run_config=air.RunConfig(name="details", verbose=0,local_dir=log_dir)
+        run_config=air.RunConfig(name="details", verbose=1,local_dir=log_dir, log_to_file=False)
     )
 
     # Generate txt files
     results = tuner.fit()
     if results.errors:
-        print("One of the trials failed!")
+        print("ERROR!")
     else:
         print("No errors!")
     if results.errors:
@@ -191,7 +191,6 @@ if __name__ == "__main__":
     def run_hypergrid_experiment(experiment_name):
 
         lr = tune.grid_search([0.1, 0.03, 0.01, 0.003, 0.001, 0.0003, 0.0001])
-        #lr = tune.grid_search([0.01, 0.001])
         if average_over_multiple_seeds:
             seed = tune.grid_search(list(range(3)))
         else:
@@ -209,8 +208,8 @@ if __name__ == "__main__":
             sampler_temperature = 1.0
             sampler_epsilon = 0.0
 
-            for loss_name in LOSS_NAMES:
-                for reward_name in REWARD_NAMES:
+            for reward_name in REWARD_NAMES:
+                for loss_name in LOSS_NAMES:
                     if reward_name == "cos":
                         height = 100
                     else:
@@ -268,12 +267,12 @@ if __name__ == "__main__":
             ndim = 2
             height = 32
             reward_name = "gmm-grid"
-            loss_name = "trajectory_balance"
+            loss_name = "trajectory-balance"
             quantize_bins = -1
             sampler_temperature = 1.0
             sampler_epsilon = 0.0
 
-            for n_hidden_layers, hidden_dim in zip([2, 4], [256, 1000]):
+            for n_hidden_layers, hidden_dim in zip([2, 4], [50, 500]):
                 for replay_buffer_size in [0, 1000]:
                     for replay_buffer_name in REPLAY_BUFFER_NAMES:
                         name = f"nhid{n_hidden_layers}_dimhid{hidden_dim}_rp_size{replay_buffer_size}_rp_name{replay_buffer_name}"
@@ -316,4 +315,5 @@ if __name__ == "__main__":
 
 
     for experiment in EXPERIMENT_NAMES:
+        print("Running experiment ", experiment)
         run_hypergrid_experiment(experiment)
