@@ -12,3 +12,5 @@ source ~/venvs/torchgfn/bin/activate
 export PYTHONPATH=$PYTHONPATH:/$HOME/torchgfn/src
 
 python main.py --local_debug false --use_wandb true --experiment_name searchspaces_losses
+#python main.py --local_debug false --use_wandb true --experiment_name replay_and_capacity
+#python main.py --local_debug false --use_wandb true --experiment_name exploration_strategies

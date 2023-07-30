@@ -291,6 +291,7 @@ class HyperGrid(Env):
         means = np.linspace(0 + self.offset, self.height-self.offset, num_means_per_dim)
         means = np.meshgrid(*[means for i in range(self.ndim)])
         means = np.array(means).reshape(self.ndim, -1).T
+        assert len(means) == self.num_means
         return means
 
     def generate_mean_in_center(self):

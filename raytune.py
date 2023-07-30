@@ -11,7 +11,11 @@ from utils import replace_dict_key
 
 REWARD_NAMES = ["cos", "gmm-grid", "gmm-random", "center", "default", "corner"]
 LOSS_NAMES = ["flowmatching", "detailed-balance", "trajectory-balance", "sub-tb"]
-EXPERIMENT_NAMES = ["reward_losses", "smoothness_losses", "searchspaces_losses", "replay_and_capacity", "exploration_strategies"][3:]
+
+#EXPERIMENT_NAMES = ["reward_losses", "smoothness_losses", "searchspaces_losses", ["replay_and_capacity"], ["exploration_strategies"]][-2]
+
+EXPERIMENT_NAMES = ["reward_losses", "smoothness_losses", ["searchspaces_losses"], ["replay_and_capacity"], ["exploration_strategies"]][-3]
+
 REPLAY_BUFFER_NAMES = ["fifo", "dist"]
 average_over_multiple_seeds = False
 num_samples = 1
@@ -19,12 +23,12 @@ num_samples = 1
 def get_config():
     CONFIG = {'env': {'device': 'cpu',
                       'ndim': 2,
+                      'num_means': 4,
                       'height': 32,
                       'R0': 0.1,
                       'R1': 0.5,
                       'R2': 2.0,
                       'reward_name': 'gmm-grid',  # ["cos","gmm-grid","gmm-random","center","corner","default"]
-                      'num_means': 4,
                       'cov_scale': 7.0,
                       'quantize_bins': -1,
                       'preprocessor_name': 'KHot',
@@ -52,11 +56,12 @@ def get_config():
     return CONFIG
 
 def change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed, experiment_name,
-                  replay_buffer_size, replay_buffer_name, n_hidden_layers, hidden_dim, sampler_temperature, sampler_epsilon):
+                  replay_buffer_size, replay_buffer_name, n_hidden_layers, hidden_dim, sampler_temperature, sampler_epsilon,batch_size, num_means):
     config = get_config()
     changes = {
         "name": name,
         "env.ndim": ndim,
+        "env.num_means": num_means,
         "env.height": height,
         "env.quantize_bins": quantize_bins,
         "env.reward_name": reward_name,
@@ -70,6 +75,7 @@ def change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr,
         "loss.hidden_dim": hidden_dim,
         "sampler.temperature": sampler_temperature,
         "sampler.epsilon": sampler_epsilon,
+        "batch_size": batch_size,
     }
 
     for key, value in changes.items():
@@ -207,6 +213,8 @@ if __name__ == "__main__":
             hidden_dim = 256
             sampler_temperature = 1.0
             sampler_epsilon = 0.0
+            batch_size = 16
+            num_means = 4
 
             for reward_name in REWARD_NAMES:
                 for loss_name in LOSS_NAMES:
@@ -220,7 +228,7 @@ if __name__ == "__main__":
                     search_spaces.append(
                         change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
                                       experiment_name, replay_buffer_size, replay_buffer_name, n_hidden_layers,
-                                      hidden_dim, sampler_temperature, sampler_epsilon))
+                                      hidden_dim, sampler_temperature, sampler_epsilon, batch_size, num_means))
 
         ## EXPERIMENT 2: Which loss for higher ndim and height?
         elif experiment_name == "searchspaces_losses":
@@ -232,14 +240,17 @@ if __name__ == "__main__":
             hidden_dim = 256
             sampler_temperature = 1.0
             sampler_epsilon = 0.0
+            batch_size = 16
 
             for loss_name in LOSS_NAMES:
-                for ndim, height in zip([2, 4], [8, 32]):
+                #for ndim, height in zip([2, 4], [8, 32]):
+                for ndim, height in zip([2,4],[8,32]):
+                    num_means = int(2**int(ndim))
                     name = "default_" + f"{ndim}d_{height}h_{loss_name}"
                     search_spaces.append(
                         change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
                                       experiment_name, replay_buffer_size, replay_buffer_name, n_hidden_layers,
-                                      hidden_dim, sampler_temperature, sampler_epsilon))
+                                      hidden_dim, sampler_temperature, sampler_epsilon, batch_size, num_means))
 
         ## EXPERIMENT 3: Which loss for more/less smoothness and height?
         elif experiment_name == "smoothness_losses":
@@ -253,13 +264,15 @@ if __name__ == "__main__":
             hidden_dim = 256
             sampler_temperature = 1.0
             sampler_epsilon = 0.0
+            batch_size = 16
+            num_means = 4
 
             for quantize_bins in [-1, 4, 10]:
                 name = "default_" + f"{quantize_bins}bins"
                 search_spaces.append(
                     change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
                                   experiment_name, replay_buffer_size, replay_buffer_name, n_hidden_layers, hidden_dim,
-                                  sampler_temperature, sampler_epsilon))
+                                  sampler_temperature, sampler_epsilon, batch_size, num_means))
 
         elif experiment_name == "replay_and_capacity":
             # one experiment no replay buffer, one experiment with replay buffer (both strategies: dist and fifo)
@@ -271,15 +284,17 @@ if __name__ == "__main__":
             quantize_bins = -1
             sampler_temperature = 1.0
             sampler_epsilon = 0.0
+            batch_size = 64
+            num_means = 4
 
-            for n_hidden_layers, hidden_dim in zip([2, 4], [50, 500]):
-                for replay_buffer_size in [0, 1000]:
+            for n_hidden_layers, hidden_dim in zip([4,2], [256,50]):
+                for replay_buffer_size in [500,0]:
                     for replay_buffer_name in REPLAY_BUFFER_NAMES:
-                        name = f"nhid{n_hidden_layers}_dimhid{hidden_dim}_rp_size{replay_buffer_size}_rp_name{replay_buffer_name}"
+                        name = f"nhid{n_hidden_layers}_dimhid{hidden_dim}_replaysize{replay_buffer_size}_replayname{replay_buffer_name}"
                         search_spaces.append(
                             change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
                                           experiment_name, replay_buffer_size, replay_buffer_name, n_hidden_layers,
-                                          hidden_dim, sampler_temperature, sampler_epsilon))
+                                          hidden_dim, sampler_temperature, sampler_epsilon, batch_size, num_means))
 
         elif experiment_name == "exploration_strategies":
             ndim = 2
@@ -291,6 +306,8 @@ if __name__ == "__main__":
             replay_buffer_name = ""
             n_hidden_layers = 2
             hidden_dim = 256
+            batch_size = 16
+            num_means = 4
 
             for sampler_temperature in [1.0, 10.0]:
                 for sampler_epsilon in [0.0, 0.1, 0.5]:
@@ -298,10 +315,7 @@ if __name__ == "__main__":
                     search_spaces.append(
                         change_config(name, ndim, height, quantize_bins, reward_name, loss_name, lr, seed,
                                       experiment_name, replay_buffer_size, replay_buffer_name, n_hidden_layers,
-                                      hidden_dim, sampler_temperature, sampler_epsilon))
-
-        #experiment comparing if you have exploration, you don't need a replay buffer
-
+                                      hidden_dim, sampler_temperature, sampler_epsilon, batch_size, num_means))
 
         else:
             raise ValueError("Invalid experiment name")
