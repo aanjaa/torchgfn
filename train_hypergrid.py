@@ -230,116 +230,6 @@ def train_hypergrid(args):
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-
-    parser.add_argument("--no_cuda", action="store_true", help="Prevent CUDA usage")
-
-    parser.add_argument(
-        "--ndim", type=int, default=2, help="Number of dimensions in the environment"
-    )
-    parser.add_argument(
-        "--height", type=int, default=64, help="Height of the environment"
-    )
-    parser.add_argument("--R0", type=float, default=0.1, help="Environment's R0")
-    parser.add_argument("--R1", type=float, default=0.5, help="Environment's R1")
-    parser.add_argument("--R2", type=float, default=2.0, help="Environment's R2")
-
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=0,
-        help="Random seed, if 0 then a random seed is used",
-    )
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=16,
-        help="Batch size, i.e. number of trajectories to sample per training iteration",
-    )
-
-    parser.add_argument(
-        "--loss",
-        type=str,
-        choices=["FM", "TB", "DB", "SubTB", "ZVar"],
-        default="TB",
-        help="Loss function to use",
-    )
-    parser.add_argument(
-        "--subTB_weighing",
-        type=str,
-        default="geometric_within",
-        help="Weighing scheme for SubTB",
-    )
-    parser.add_argument(
-        "--subTB_lambda", type=float, default=0.9, help="Lambda parameter for SubTB"
-    )
-
-    parser.add_argument(
-        "--tabular",
-        action="store_true",
-        help="Use a lookup table for F, PF, PB instead of an estimator",
-    )
-    parser.add_argument("--uniform_pb", action="store_true", help="Use a uniform PB")
-    parser.add_argument(
-        "--tied", action="store_true", help="Tie the parameters of PF, PB, and F"
-    )
-    parser.add_argument(
-        "--hidden_dim",
-        type=int,
-        default=256,
-        help="Hidden dimension of the estimators' neural network modules.",
-    )
-    parser.add_argument(
-        "--n_hidden",
-        type=int,
-        default=2,
-        help="Number of hidden layers (of size `hidden_dim`) in the estimators'"
-        + " neural network modules",
-    )
-
-    parser.add_argument(
-        "--lr",
-        type=float,
-        default=1e-3,
-        help="Learning rate for the estimators' modules",
-    )
-    parser.add_argument(
-        "--lr_Z",
-        type=float,
-        default=0.1,
-        help="Specific learning rate for Z (only used for TB loss)",
-    )
-
-    parser.add_argument(
-        "--n_trajectories",
-        type=int,
-        default=int(1e6),
-        help="Total budget of trajectories to train on. "
-        + "Training iterations = n_trajectories // batch_size",
-    )
-
-    parser.add_argument(
-        "--validation_interval",
-        type=int,
-        default=100,
-        help="How often (in training steps) to validate the parameterization",
-    )
-    parser.add_argument(
-        "--validation_samples",
-        type=int,
-        default=200000,
-        help="Number of validation samples to use to evaluate the probability mass function.",
-    )
-
-    parser.add_argument(
-        "--wandb_project",
-        type=str,
-        default="",
-        help="Name of the wandb project. If empty, don't use wandb",
-    )
-
-    args = parser.parse_args()
-
     config = {
         "no_cuda": False,  # Prevent CUDA usage
         "ndim": 2,  # Number of dimensions in the environment
@@ -366,6 +256,9 @@ if __name__ == "__main__":
         "name": 'test',  # Name of the run
         "replay_buffer_size": 2,  # Size of the replay buffer
         "replay_buffer_type": "Dist",  # Type of the replay buffer
+        "reward_type": "GMM-grid",  # Type of reward function
+        "n_means": 4,  # Number of means for the GMM reward function
+        "n_bins": 4,  # Number of quantization bins for the GMM reward function, if -1 no quantization is performed
     }
 
     args = Namespace(**config)

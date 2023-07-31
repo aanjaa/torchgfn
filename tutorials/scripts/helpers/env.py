@@ -10,6 +10,7 @@ from gfn.gym.discrete_ebm import DiscreteEBM, HyperGrid
 
 @dataclass
 class HyperGridConfig:
+    # TODO: include vars for GMM, smoothness, etc.
     ndim: int = 2
     height: int = 8
     R0: float = 0.1

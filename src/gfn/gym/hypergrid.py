@@ -13,6 +13,7 @@ from gfn.env import DiscreteEnv
 from gfn.gym.helpers.preprocessors import KHotPreprocessor, OneHotPreprocessor
 from gfn.preprocessors import EnumPreprocessor, IdentityPreprocessor
 from gfn.states import DiscreteStates
+from scipy.stats import multivariate_normal
 
 
 class HyperGrid(DiscreteEnv):
@@ -23,7 +24,10 @@ class HyperGrid(DiscreteEnv):
         R0: float = 0.1,
         R1: float = 0.5,
         R2: float = 2.0,
-        reward_cos: bool = False,
+        reward_type: Literal["cos", "GMM-grid", "GMM-random", "center", "corner", "default"] = "default",
+        num_means: int = 4,
+        cov_scale: float = 1.0,
+        quantize_bins: int = -1,
         device_str: Literal["cpu", "cuda"] = "cpu",
         preprocessor_name: Literal["KHot", "OneHot", "Identity", "Enum"] = "KHot",
     ):
@@ -39,7 +43,10 @@ class HyperGrid(DiscreteEnv):
             R0 (float, optional): reward parameter R0. Defaults to 0.1.
             R1 (float, optional): reward parameter R1. Defaults to 0.5.
             R2 (float, optional): reward parameter R1. Defaults to 2.0.
-            reward_cos (bool, optional): Which version of the reward to use. Defaults to False.
+            reward_type (bool, optional): Which version of the reward to use
+            num_means (int, optional): Number of means for the GMM rewards
+            cov_scale (float, optional): Scale of the covariance matrix for the GMM rewards
+            quantize_bins (int, optional): Number of bins to quantize reward values
             device_str (str, optional): "cpu" or "cuda". Defaults to "cpu".
             preprocessor_name (str, optional): "KHot" or "OneHot" or "Identity". Defaults to "KHot".
         """
@@ -48,7 +55,11 @@ class HyperGrid(DiscreteEnv):
         self.R0 = R0
         self.R1 = R1
         self.R2 = R2
-        self.reward_cos = reward_cos
+        self.reward_type = reward_type
+        self.num_means = num_means
+        self.cov_scale = cov_scale
+        self.quantize_bins = quantize_bins
+        self.offset = self.cov_scale/2.0
 
         s0 = torch.zeros(ndim, dtype=torch.long, device=torch.device(device_str))
         sf = torch.full(
@@ -133,22 +144,53 @@ class HyperGrid(DiscreteEnv):
         new_states_tensor = states.tensor.scatter(-1, actions.tensor, -1, reduce="add")
         return new_states_tensor
 
-    def true_reward(
+    def not_quantized_reward(
         self, final_states: DiscreteStates
     ) -> TT["batch_shape", torch.float]:
         """TODO: Equation governing reward should be placed here."""
         final_states_raw = final_states.tensor
         R0, R1, R2 = (self.R0, self.R1, self.R2)
         ax = abs(final_states_raw / (self.height - 1) - 0.5)
-        if not self.reward_cos:
+        if self.reward_type == "default":
             reward = (
                 R0 + (0.25 < ax).prod(-1) * R1 + ((0.3 < ax) * (ax < 0.4)).prod(-1) * R2
             )
-        else:
+        elif self.reward_type == "cos":
             pdf_input = ax * 5
             pdf = 1.0 / (2 * torch.pi) ** 0.5 * torch.exp(-(pdf_input**2) / 2)
             reward = R0 + ((torch.cos(ax * 50) + 1) * pdf).prod(-1) * R1
+        elif self.reward_type in ["gmm-random", "gmm-grid", "center", "corner"]:
+            GMMs = self.GMM_generate()
+            reward = self.GMM_compute_reward(GMMs, final_states_raw)
+            reward = torch.tensor(reward, dtype=torch.float32)
+            # scale up for more stable training
+            reward *= 10**self.ndim
+        else:
+            raise ValueError(f"Unknown reward type {self.reward_type}")
         return reward
+
+    @property
+    def max_reward_value(self):
+        return torch.max(self.not_quantized_reward(self.terminating_states)).item()
+    @property
+    def min_reward_value(self):
+        return torch.min(self.not_quantized_reward(self.terminating_states)).item()
+
+    def true_reward(self, final_states: DiscreteStates) -> TT["batch_shape", torch.float]:
+        """
+        Function that quantizes the reward values.
+        self.quantize_bins: number of values the rewards will be rounded to; if -1 no quantization is performed
+        """
+        reward = self.not_quantized_reward(final_states)
+        if self.quantize_bins == -1 or reward.numel() == 0:
+            return reward
+        else:
+            boundaries = torch.linspace(self.min_reward_value,self.max_reward_value, self.quantize_bins+1)
+            indices = torch.bucketize(reward,boundaries,right = True)
+            # if element of list is greater than len(boundaries) reduce value by 1
+            indices[indices > (len(boundaries)-1)] = len(boundaries)-1
+            reward = boundaries[indices]
+            return reward
 
     def log_reward(
         self, final_states: DiscreteStates
@@ -224,3 +266,84 @@ class HyperGrid(DiscreteEnv):
     @property
     def terminating_states(self) -> DiscreteStates:
         return self.all_states
+
+
+
+    # Util functions for GMMs
+    def generate_means_on_grid(self):
+        """"
+        Function that generates means on a grid in multiple dimensions.
+        ndim: number of dimensions
+        height: height of the grid
+        num_means: number of means
+        offset: offset of the grid
+        """
+        num_means_per_dim = int(self.num_means**(self.ndim**-1))
+        means = np.linspace(0 + self.offset, self.height-self.offset, num_means_per_dim)
+        means = np.meshgrid(*[means for i in range(self.ndim)])
+        means = np.array(means).reshape(self.ndim, -1).T
+        assert len(means) == self.num_means
+        return means
+
+    def generate_mean_in_center(self):
+        """
+        Function that generates a mean in the center of the grid.
+        ndim: number of dimensions
+        """
+
+        mean = np.ones(self.ndim)*self.height/2
+        return mean
+
+    def generate_mean_in_corner(self):
+        """
+        Function that generates a mean in the corner of the grid.
+        ndim: number of dimensions
+        """
+        mean = np.ones(self.ndim)*self.height-self.offset
+        return mean
+
+    def generate_means_random(self):
+        """
+        Function that generates means randomly.
+        ndim: number of dimensions
+        num_means: number of means per dimension
+        height: height of the grid
+        offset: offset of the grid
+        """
+        means = np.random.uniform(0+self.offset, self.height-self.offset, (self.num_means, self.ndim))
+        return means
+
+    def GMM_generate(self):
+        # Get means and covariance matrices
+        if self.reward_type == "GMM-grid":
+            means = self.generate_means_on_grid()
+            covs = [np.eye(self.ndim)*self.cov_scale] * self.num_means
+        elif self.reward_type == "GMM-random":
+            means = self.generate_means_random()
+            covs = [np.eye(self.ndim)*self.cov_scale] * self.num_means
+        elif self.reward_type == "center":
+            means = [self.generate_mean_in_center()]
+            covs = [np.eye(self.ndim)*self.cov_scale]
+        elif self.reward_type == "corner":
+            means = [self.generate_mean_in_corner()]
+            covs = [np.eye(self.ndim)*self.cov_scale]
+        else:
+            raise ValueError("mean_strategy not recognized")
+
+        # Create Gaussian mixture model
+        GMM = []
+        for mean,cov in zip(means,covs):
+            GMM.append(multivariate_normal(mean, cov))
+        return GMM
+
+    def GMM_compute_reward(self,GMM,state):
+        """
+        Function that gets the reward of a state given a Gaussian mixture model
+        state: state
+        GMM: Gaussian mixture model
+        """
+        reward = 0
+        for Gaussian in GMM:
+            reward += Gaussian.pdf(state)
+        return reward
+
