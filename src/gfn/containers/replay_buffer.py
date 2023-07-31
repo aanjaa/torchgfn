@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Literal
 
 from gfn.containers.trajectories import Trajectories
 from gfn.containers.transitions import Transitions
-
+import torch
 if TYPE_CHECKING:
     from gfn.env import Env
     from gfn.states import States
@@ -16,7 +16,7 @@ class ReplayBuffer:
 
     Attributes:
         env: the Environment instance.
-        loss_fn: the Loss instance
+        replay_buffer_type: strategy of keeping samples in the buffer.
         capacity: the size of the buffer.
         training_objects: the buffer of objects used for training.
         terminating_states: a States class representation of $s_f$.
@@ -26,13 +26,14 @@ class ReplayBuffer:
     def __init__(
         self,
         env: Env,
+        replay_buffer_type: Literal["FIFO", "Dist"],
         objects_type: Literal["transitions", "trajectories", "states"] | None = None,
         capacity: int = 1000,
     ):
         """Instantiates a replay buffer.
         Args:
             env: the Environment instance.
-            loss_fn: the Loss instance.
+            replay_buffer_type: strategy of keeping samples in the buffer
             capacity: the size of the buffer.
             objects_type: the type of buffer (transitions, trajectories, or states).
         """
@@ -51,6 +52,11 @@ class ReplayBuffer:
             self.objects_type = "states"
         else:
             raise ValueError(f"Unknown objects_type: {objects_type}")
+
+        # Only trajectories can be used for the Dist replay buffer
+        if replay_buffer_type == "Dist":
+            assert self.objects_type == "trajectories", "Dist replay buffer can only be used with trajectories"
+        self.replay_buffer_type = replay_buffer_type
 
         self._is_full = False
         self._index = 0
@@ -73,13 +79,28 @@ class ReplayBuffer:
         self._is_full |= self._index + to_add >= self.capacity
         self._index = (self._index + to_add) % self.capacity
 
-        self.training_objects.extend(training_objects)
-        self.training_objects = self.training_objects[-self.capacity :]
+        if self.replay_buffer_type == "FIFO":
+            self.training_objects.extend(training_objects)
+            self.training_objects = self.training_objects[-self.capacity :]
 
-        if self.terminating_states is not None:
-            assert terminating_states is not None
-            self.terminating_states.extend(terminating_states)
-            self.terminating_states = self.terminating_states[-self.capacity :]
+            if self.terminating_states is not None:
+                assert terminating_states is not None
+                self.terminating_states.extend(terminating_states)
+                self.terminating_states = self.terminating_states[-self.capacity :]
+
+        elif self.replay_buffer_type == "Dist":
+            """
+            Keeps only trajectories with most distant (l1 distance) last states in the buffer. 
+            """
+            assert isinstance(training_objects, Trajectories), "Dist replay buffer can only be used with trajectories"
+            self.training_objects.extend(training_objects)
+            all_last_states = self.training_objects.last_states.tensor
+            distances = torch.vmap(torch.vmap(lambda x, y: torch.abs(x - y).sum(), in_dims=(0, None)), in_dims=(None, 0))(
+                all_last_states, all_last_states)  # Get l1 distances between last states
+            distances = distances.sum(dim=1)  # Get total distance to all other last states
+            k = min(self.capacity, len(distances))
+            values, indices = torch.topk(distances, k=k, dim=0)
+            self.training_objects = self.training_objects[indices]
 
     def sample(self, n_trajectories: int) -> Transitions | Trajectories | tuple[States]:
         """Samples `n_trajectories` training objects from the buffer."""
