@@ -14,7 +14,7 @@ average_over_multiple_seeds = False
 num_samples = 1
 
 from main_hypergrid import train_hypergrid
-
+from argparse import ArgumentParser
 
 def change_config(config,changes_config):
     for key, value in changes_config.items():
@@ -133,7 +133,11 @@ def run_tune(search_space, num_samples):
 if __name__ == "__main__":
 
     FOLDER_NAME = "logs_missing"
-    EXPERIMENTS = ["replay_and_capacity"]
+
+    parser = ArgumentParser()
+    parser.add_argument("--experiment_name", type=str,
+                        default="replay_and_capacity")
+    args = parser.parse_args()
 
     ## EXPERIMENT 1: Which loss for reward function?
     def run_hypergrid_experiment(experiment_name):
@@ -388,6 +392,5 @@ if __name__ == "__main__":
             #     print("Error in experiment ", experiment_name, " with search space ", search_space)
 
 
-    for experiment in EXPERIMENTS:
-        print("Running experiment ", experiment)
-        run_hypergrid_experiment(experiment)
+    print("Running experiment ", args.experiment_name)
+    run_hypergrid_experiment(args.experiment_name)
