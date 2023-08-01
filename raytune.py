@@ -132,7 +132,7 @@ def run_tune(search_space, num_samples):
 
 if __name__ == "__main__":
 
-    FOLDER_NAME = "logs_missing"
+    FOLDER_NAME = "logs_cluster"
 
     parser = ArgumentParser()
     parser.add_argument("--experiment_name", type=str,
