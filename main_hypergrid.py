@@ -180,7 +180,7 @@ def train_hypergrid(config, use_wandb):
     states_visited = 0
     n_iterations = args.n_trajectories // args.batch_size
 
-    for iteration in trange(n_iterations):
+    for iteration in trange(n_iterations+1):
         trajectories = parametrization.sample_trajectories(n_samples=args.batch_size)
         states_visited += len(trajectories)
         visited_terminating_states.extend(trajectories.last_states)
@@ -215,7 +215,7 @@ def train_hypergrid(config, use_wandb):
             to_log.update(validation_info)
             tqdm.write(f"{iteration}: {to_log}")
 
-    return to_log, env
+    return to_log
 
 
 def plot(reward_raw, states, im_show):
@@ -255,9 +255,13 @@ def run_train(config, use_wandb, im_show):
         wandb.init(project=config["experiment_name"], name=config["name"])
         wandb.config.update(config)
 
-    to_log,env = train_hypergrid(config, use_wandb)
+    to_log = train_hypergrid(config, use_wandb)
 
     # Plotting
+    env = HyperGrid(
+        config["ndim"], config["height"], config["reward_type"], config["R0"], config["R1"], config["R2"], config["n_means"], config["cov_scale"],
+        config["quantize_bins"], device_str="cpu"
+    )
     states = env.build_grid()
     reward = env.reward(states)
     if config["env.ndim"] == 2:

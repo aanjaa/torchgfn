@@ -167,7 +167,7 @@ if __name__ == "__main__":
                 "n_hidden": 2,
                 "lr": lr,
                 "lr_Z": 0.1,
-                "n_trajectories": int(16016),  # Training iterations = n_trajectories // batch_size
+                "n_trajectories": int(16*1000),  # Training iterations = n_trajectories // batch_size
                 "validation_interval": 100,
                 "validation_samples": 10000,
                 "experiment_name": experiment_name,
@@ -223,7 +223,7 @@ if __name__ == "__main__":
                 "n_hidden": 2,
                 "lr": lr,
                 "lr_Z": 0.1,
-                "n_trajectories": int(16016),  # Training iterations = n_trajectories // batch_size
+                "n_trajectories": int(16*1000),  # Training iterations = n_trajectories // batch_size
                 "validation_interval": 100,
                 "validation_samples": 10000,
                 "experiment_name": experiment_name,
@@ -278,7 +278,7 @@ if __name__ == "__main__":
                 "n_hidden": 2,
                 "lr": lr,
                 "lr_Z": 0.1,
-                "n_trajectories": int(16016),  # Training iterations = n_trajectories // batch_size
+                "n_trajectories": int(16*1000),  # Training iterations = n_trajectories // batch_size
                 "validation_interval": 100,
                 "validation_samples": 10000,
                 "experiment_name": experiment_name,
@@ -311,7 +311,7 @@ if __name__ == "__main__":
 
             config = {
                 "no_cuda": True,
-                "ndim": 2,
+                "ndim": 3,
                 "height": 32,
                 "R0": 0.1,
                 "R1": 0.5,
@@ -328,15 +328,15 @@ if __name__ == "__main__":
                 "n_hidden": 2,
                 "lr": lr,
                 "lr_Z": 0.1,
-                "n_trajectories": int(16016),  # Training iterations = n_trajectories // batch_size
+                "n_trajectories": int(64*1000),  # Training iterations = n_trajectories // batch_size
                 "validation_interval": 100,
                 "validation_samples": 10000,
                 "experiment_name": experiment_name,
                 "name": 'test',
                 "replay_buffer_size": 0,
                 "replay_buffer_type": None,
-                "reward_type": "GMM-grid",
-                "n_means": 4,
+                "reward_type": "default",
+                "n_means": None,
                 "quantize_bins": -1,
                 "cov_scale": 7.0
             }
