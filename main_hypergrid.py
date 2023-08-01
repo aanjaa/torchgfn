@@ -1,24 +1,15 @@
-"""
-The goal of this script is to reproduce some of the published results on the HyperGrid
-environment. Run one of the following commands to reproduce some of the results in
-[Trajectory balance: Improved credit assignment in GFlowNets](https://arxiv.org/abs/2201.13259)
+from argparse import Namespace
 
-python train_hypergrid.py --ndim 4 --height 8 --R0 {0.1, 0.01, 0.001} --tied {--uniform} --loss {TB, DB}
-python train_hypergrid.py --ndim 2 --height 64 --R0 {0.1, 0.01, 0.001} --tied {--uniform} --loss {TB, DB}
-
-And run one of the following to reproduce some of the results in
-[Learning GFlowNets from partial episodes for improved convergence and stability](https://arxiv.org/abs/2209.12782)
-python train_hypergrid.py --ndim {2, 4} --height 12 --R0 {1e-3, 1e-4} --tied --loss {TB, DB, SubTB}
-"""
-
-from argparse import ArgumentParser, Namespace
-
+import matplotlib.pyplot as plt
 import torch
+import wandb
+from matplotlib import cm
+from matplotlib.colors import LightSource
 from tqdm import tqdm, trange
 
-import wandb
-from gfn.gym import HyperGrid
+from gfn.containers.replay_buffer import ReplayBuffer
 from gfn.estimators import LogEdgeFlowEstimator, LogStateFlowEstimator, LogZEstimator
+from gfn.gym import HyperGrid
 from gfn.losses import (
     DBParametrization,
     FMParametrization,
@@ -29,23 +20,21 @@ from gfn.losses import (
 from gfn.utils.common import trajectories_to_training_samples, validate
 from gfn.utils.estimators import DiscretePBEstimator, DiscretePFEstimator
 from gfn.utils.modules import DiscreteUniform, NeuralNet, Tabular
-from gfn.containers.replay_buffer import ReplayBuffer
+import numpy as np
 
 
-def train_hypergrid(args):
-    seed = args.seed if args.seed != 0 else torch.randint(int(10e10), (1,))[0].item()
+def train_hypergrid(config, use_wandb):
+    args = Namespace(**config)
+    seed = args.seed if args.seed != 0 else torch.randint(int(2**32), (1,))[0].item()
     torch.manual_seed(seed)
+    np.random.seed(seed)
 
     device_str = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
 
-    use_wandb = len(args.wandb_project) > 0
-    if use_wandb:
-        wandb.init(project=args.wandb_project, name=args.name, config=args)
-        #wandb.config.update(args)
-
     # 1. Create the environment
     env = HyperGrid(
-        args.ndim, args.height, args.R0, args.R1, args.R2, device_str=device_str
+        args.ndim, args.height, args.reward_type, args.R0, args.R1, args.R2, args.n_means, args.cov_scale,
+        args.quantize_bins, device_str=device_str
     )
 
     # 2. Create the parameterization.
@@ -185,7 +174,7 @@ def train_hypergrid(args):
     if args.replay_buffer_size > 0:
         replay_buffer = ReplayBuffer(
             env, args.replay_buffer_type, "trajectories", args.replay_buffer_size
-        ) #always keep trajectories so that you can compare them for the dist replay buffer name
+        )  # always keep trajectories so that you can compare them for the dist replay buffer name
 
     visited_terminating_states = env.States.from_batch_shape((0,))
     states_visited = 0
@@ -197,9 +186,10 @@ def train_hypergrid(args):
         visited_terminating_states.extend(trajectories.last_states)
 
         if replay_buffer is not None:
-            replay_buffer.add(trajectories)
-            replay_trajectories = replay_buffer.sample(n_trajectories=args.batch_size)
-            trajectories.extend(replay_trajectories)
+            with torch.no_grad():
+                replay_buffer.add(trajectories)
+                replay_trajectories = replay_buffer.sample(n_trajectories=args.batch_size)
+                trajectories.extend(replay_trajectories)
 
         training_samples = trajectories_to_training_samples(
             trajectories, parametrization
@@ -209,7 +199,6 @@ def train_hypergrid(args):
         loss = parametrization.loss(training_samples)
         loss.backward()
         optimizer.step()
-
 
         to_log = {"loss": loss.item(), "states_visited": states_visited}
         if use_wandb:
@@ -226,12 +215,65 @@ def train_hypergrid(args):
             to_log.update(validation_info)
             tqdm.write(f"{iteration}: {to_log}")
 
-    return to_log
+    return to_log, env
+
+
+def plot(reward_raw, states, im_show):
+    reward = reward_raw.numpy()
+    x = states.states_tensor[:, :, 0]
+    y = states.states_tensor[:, :, 1]
+
+    def plot2d(reward, x, y):
+        # 2D plot
+        fig2d, ax = plt.subplots()
+        im = ax.imshow(reward, cmap=cm.gist_earth, origin="lower")
+        fig2d.colorbar(im, ax=ax)
+        fig2d.x_ticks = x
+        fig2d.y_ticks = y
+        if im_show:
+            plt.show()
+        return fig2d
+
+    def plot3d(reward, x, y):
+        # 3D plot
+        fig3d, ax = plt.subplots(subplot_kw=dict(projection='3d'))
+        ls = LightSource(270, 45)
+        rgb = ls.shade(reward, cmap=cm.gist_earth, vert_exag=0.1, blend_mode='soft')
+        surf = ax.plot_surface(x, y, reward, rstride=1, cstride=1, facecolors=rgb,
+                               linewidth=0, antialiased=False, shade=False)
+        if im_show:
+            plt.show()
+        return fig3d
+
+    fig2d = plot2d(reward, x, y)
+    fig3d = plot3d(reward, x, y)
+    return fig2d, fig3d
+
+
+def run_train(config, use_wandb, im_show):
+    if use_wandb:
+        wandb.init(project=config["experiment_name"], name=config["name"])
+        wandb.config.update(config)
+
+    to_log,env = train_hypergrid(config, use_wandb)
+
+    # Plotting
+    states = env.build_grid()
+    reward = env.reward(states)
+    if config["env.ndim"] == 2:
+        fig2d, fig3d = plot(reward, states, im_show)
+        if use_wandb:
+            wandb.log({"2d": wandb.Image(fig2d), "3d": wandb.Image(fig3d)})
+            wandb.finish()
+    else:
+        if use_wandb:
+            wandb.finish()
+    del fig3d, fig2d
 
 
 if __name__ == "__main__":
     config = {
-        "no_cuda": False,  # Prevent CUDA usage
+        "no_cuda": True,  # Prevent CUDA usage
         "ndim": 2,  # Number of dimensions in the environment
         "height": 64,  # Height of the environment
         "R0": 0.1,  # Environment's R0
@@ -249,18 +291,18 @@ if __name__ == "__main__":
         "n_hidden": 2,  # Number of hidden layers (of size `hidden_dim`) in the estimators neural network modules
         "lr": 0.001,  # Learning rate for the estimators' modules
         "lr_Z": 0.1,  # Specific learning rate for Z (only used for TB loss)
-        "n_trajectories": int(1e6),  # Total budget of trajectories to train on. Training iterations = n_trajectories // batch_size
+        "n_trajectories": int(1e6),
+        # Total budget of trajectories to train on. Training iterations = n_trajectories // batch_size
         "validation_interval": 100,  # How often (in training steps) to validate the parameterization
         "validation_samples": 200000,  # Number of validation samples to use to evaluate the probability mass function.
-        "wandb_project": '',  # Name of the wandb project. If empty, don't use wandb
+        "experiment_name": '',  # Name of the wandb project. If empty, don't use wandb
         "name": 'test',  # Name of the run
         "replay_buffer_size": 2,  # Size of the replay buffer
         "replay_buffer_type": "Dist",  # Type of the replay buffer
-        "reward_type": "GMM-grid",  # Type of reward function
+        "reward_type": "default",  # Type of reward function
         "n_means": 4,  # Number of means for the GMM reward function
-        "n_bins": 4,  # Number of quantization bins for the GMM reward function, if -1 no quantization is performed
+        "quantize_bins": 4,  # Number of quantization bins for the GMM reward function, if -1 no quantization is performed
+        "cov_scale": 7.0  # Scale of the covariance matrix for the GMM reward function
     }
 
-    args = Namespace(**config)
-    to_log = train_hypergrid(args)
-
+    run_train(config, use_wandb=False, im_show=True)

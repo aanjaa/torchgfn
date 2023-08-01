@@ -14,6 +14,7 @@ from gfn.gym.helpers.preprocessors import KHotPreprocessor, OneHotPreprocessor
 from gfn.preprocessors import EnumPreprocessor, IdentityPreprocessor
 from gfn.states import DiscreteStates
 from scipy.stats import multivariate_normal
+import numpy as np
 
 
 class HyperGrid(DiscreteEnv):
@@ -21,11 +22,11 @@ class HyperGrid(DiscreteEnv):
         self,
         ndim: int = 2,
         height: int = 4,
+        reward_type: Literal["cos", "GMM-grid", "GMM-random", "center", "corner", "default"] = "default",
         R0: float = 0.1,
         R1: float = 0.5,
         R2: float = 2.0,
-        reward_type: Literal["cos", "GMM-grid", "GMM-random", "center", "corner", "default"] = "default",
-        num_means: int = 4,
+        n_means: int = 4,
         cov_scale: float = 1.0,
         quantize_bins: int = -1,
         device_str: Literal["cpu", "cuda"] = "cpu",
@@ -44,7 +45,7 @@ class HyperGrid(DiscreteEnv):
             R1 (float, optional): reward parameter R1. Defaults to 0.5.
             R2 (float, optional): reward parameter R1. Defaults to 2.0.
             reward_type (bool, optional): Which version of the reward to use
-            num_means (int, optional): Number of means for the GMM rewards
+            n_means (int, optional): Number of means for the GMM rewards
             cov_scale (float, optional): Scale of the covariance matrix for the GMM rewards
             quantize_bins (int, optional): Number of bins to quantize reward values
             device_str (str, optional): "cpu" or "cuda". Defaults to "cpu".
@@ -52,11 +53,11 @@ class HyperGrid(DiscreteEnv):
         """
         self.ndim = ndim
         self.height = height
+        self.reward_type = reward_type
         self.R0 = R0
         self.R1 = R1
         self.R2 = R2
-        self.reward_type = reward_type
-        self.num_means = num_means
+        self.n_means = n_means
         self.cov_scale = cov_scale
         self.quantize_bins = quantize_bins
         self.offset = self.cov_scale/2.0
@@ -159,7 +160,7 @@ class HyperGrid(DiscreteEnv):
             pdf_input = ax * 5
             pdf = 1.0 / (2 * torch.pi) ** 0.5 * torch.exp(-(pdf_input**2) / 2)
             reward = R0 + ((torch.cos(ax * 50) + 1) * pdf).prod(-1) * R1
-        elif self.reward_type in ["gmm-random", "gmm-grid", "center", "corner"]:
+        elif self.reward_type in ["GMM-random", "GMM-grid", "center", "corner"]:
             GMMs = self.GMM_generate()
             reward = self.GMM_compute_reward(GMMs, final_states_raw)
             reward = torch.tensor(reward, dtype=torch.float32)
@@ -185,7 +186,7 @@ class HyperGrid(DiscreteEnv):
         if self.quantize_bins == -1 or reward.numel() == 0:
             return reward
         else:
-            boundaries = torch.linspace(self.min_reward_value,self.max_reward_value, self.quantize_bins+1)
+            boundaries = torch.linspace(self.min_reward_value,self.max_reward_value, self.quantize_bins+1, device = self.device)
             indices = torch.bucketize(reward,boundaries,right = True)
             # if element of list is greater than len(boundaries) reduce value by 1
             indices[indices > (len(boundaries)-1)] = len(boundaries)-1
@@ -275,14 +276,14 @@ class HyperGrid(DiscreteEnv):
         Function that generates means on a grid in multiple dimensions.
         ndim: number of dimensions
         height: height of the grid
-        num_means: number of means
+        n_means: number of means
         offset: offset of the grid
         """
-        num_means_per_dim = int(self.num_means**(self.ndim**-1))
-        means = np.linspace(0 + self.offset, self.height-self.offset, num_means_per_dim)
+        n_means_per_dim = int(self.n_means**(self.ndim**-1))
+        means = np.linspace(0 + self.offset, self.height-self.offset, n_means_per_dim)
         means = np.meshgrid(*[means for i in range(self.ndim)])
         means = np.array(means).reshape(self.ndim, -1).T
-        assert len(means) == self.num_means
+        assert len(means) == self.n_means
         return means
 
     def generate_mean_in_center(self):
@@ -306,21 +307,21 @@ class HyperGrid(DiscreteEnv):
         """
         Function that generates means randomly.
         ndim: number of dimensions
-        num_means: number of means per dimension
+        n_means: number of means per dimension
         height: height of the grid
         offset: offset of the grid
         """
-        means = np.random.uniform(0+self.offset, self.height-self.offset, (self.num_means, self.ndim))
+        means = np.random.uniform(0+self.offset, self.height-self.offset, (self.n_means, self.ndim))
         return means
 
     def GMM_generate(self):
         # Get means and covariance matrices
         if self.reward_type == "GMM-grid":
             means = self.generate_means_on_grid()
-            covs = [np.eye(self.ndim)*self.cov_scale] * self.num_means
+            covs = [np.eye(self.ndim)*self.cov_scale] * self.n_means
         elif self.reward_type == "GMM-random":
             means = self.generate_means_random()
-            covs = [np.eye(self.ndim)*self.cov_scale] * self.num_means
+            covs = [np.eye(self.ndim)*self.cov_scale] * self.n_means
         elif self.reward_type == "center":
             means = [self.generate_mean_in_center()]
             covs = [np.eye(self.ndim)*self.cov_scale]
