@@ -264,15 +264,15 @@ def run_train(config, use_wandb, im_show):
     )
     states = env.build_grid()
     reward = env.reward(states)
-    if config["env.ndim"] == 2:
+    if config["ndim"] == 2:
         fig2d, fig3d = plot(reward, states, im_show)
         if use_wandb:
             wandb.log({"2d": wandb.Image(fig2d), "3d": wandb.Image(fig3d)})
+            del fig3d, fig2d
             wandb.finish()
     else:
         if use_wandb:
             wandb.finish()
-    del fig3d, fig2d
 
 
 if __name__ == "__main__":
