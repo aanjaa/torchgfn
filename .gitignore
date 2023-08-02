@@ -180,7 +180,6 @@ logs
 logs_missing
 
 # slurm-specific stuff
-*.sh
 *.out
 
 scripts.py
