@@ -185,3 +185,7 @@ scripts.py
 *.ipynb
 models/
 *.DS_Store
+
+logs/
+logs_cluster/
+logs_mising/
