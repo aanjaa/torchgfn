@@ -1,4 +1,4 @@
-LOSSES = ["FM", "TB", "DB", "SubTB", "ZVar"]
+LOSSES = ["FM", "TB", "DB", "SubTB", "ZVar", "ModifiedDB"]
 REWARD_TYPES = ["cos", "GMM-grid", "GMM-random", "center", "default", "corner"]
 REPLAY_BUFFER_TYPES = ["FIFO", "Dist"]
 

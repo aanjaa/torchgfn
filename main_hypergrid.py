@@ -7,21 +7,26 @@ from matplotlib import cm
 from matplotlib.colors import LightSource
 from tqdm import tqdm, trange
 
-from gfn.containers.replay_buffer import ReplayBuffer
-from gfn.estimators import LogEdgeFlowEstimator, LogStateFlowEstimator, LogZEstimator
-from gfn.gym import HyperGrid
-from gfn.losses import (
-    DBParametrization,
-    FMParametrization,
-    LogPartitionVarianceParametrization,
-    SubTBParametrization,
-    TBParametrization,
+from argparse import ArgumentParser
+
+import torch
+import wandb
+from tqdm import tqdm, trange
+
+from gfn.containers import ReplayBuffer
+from gfn.gflownet import (
+    DBGFlowNet,
+    FMGFlowNet,
+    LogPartitionVarianceGFlowNet,
+    ModifiedDBGFlowNet,
+    SubTBGFlowNet,
+    TBGFlowNet,
 )
-from gfn.utils.common import trajectories_to_training_samples, validate
-from gfn.utils.estimators import DiscretePBEstimator, DiscretePFEstimator
+from gfn.gym import HyperGrid
+from gfn.modules import DiscretePolicyEstimator, ScalarEstimator
+from gfn.utils.common import validate
 from gfn.utils.modules import DiscreteUniform, NeuralNet, Tabular
 import numpy as np
-
 
 def train_hypergrid(config, use_wandb):
     args = Namespace(**config)
@@ -37,13 +42,13 @@ def train_hypergrid(config, use_wandb):
         args.quantize_bins, device_str=device_str
     )
 
-    # 2. Create the parameterization.
+    # 2. Create the gflownets.
     #    For this we need modules and estimators.
     #    Depending on the loss, we may need several estimators:
     #       one (forward only) for FM loss,
     #       two (forward and backward) or other losses
     #       three (same, + logZ) estimators for TB.
-    parametrization = None
+    gflownet = None
     if args.loss == "FM":
         # We need a LogEdgeFlowEstimator
         if args.tabular:
@@ -55,8 +60,8 @@ def train_hypergrid(config, use_wandb):
                 hidden_dim=args.hidden_dim,
                 n_hidden_layers=args.n_hidden,
             )
-        estimator = LogEdgeFlowEstimator(env=env, module=module)
-        parametrization = FMParametrization(estimator)
+        estimator = DiscretePolicyEstimator(env=env, module=module, forward=True)
+        gflownet = FMGFlowNet(estimator)
     else:
         pb_module = None
         # We need a DiscretePFEstimator and a DiscretePBEstimator
@@ -89,12 +94,18 @@ def train_hypergrid(config, use_wandb):
                 pb_module is not None
         ), f"pb_module is None. Command-line arguments: {args}"
 
-        pf_estimator = DiscretePFEstimator(env=env, module=pf_module)
-        pb_estimator = DiscretePBEstimator(env=env, module=pb_module)
+        pf_estimator = DiscretePolicyEstimator(env=env, module=pf_module, forward=True)
+        pb_estimator = DiscretePolicyEstimator(env=env, module=pb_module, forward=False)
+
+        if args.loss == "ModifiedDB":
+            gflownet = ModifiedDBGFlowNet(
+                pf_estimator,
+                pb_estimator,
+                True if args.replay_buffer_size == 0 else False,
+            )
 
         if args.loss in ("DB", "SubTB"):
             # We need a LogStateFlowEstimator
-
             assert (
                     pf_estimator is not None
             ), f"pf_estimator is None. Command-line arguments: {args}"
@@ -112,76 +123,99 @@ def train_hypergrid(config, use_wandb):
                     n_hidden_layers=args.n_hidden,
                     torso=pf_module.torso if args.tied else None,
                 )
-            logF_estimator = LogStateFlowEstimator(env=env, module=module)
 
+            logF_estimator = ScalarEstimator(env=env, module=module)
             if args.loss == "DB":
-                parametrization = DBParametrization(
+                gflownet = DBGFlowNet(
                     pf=pf_estimator,
                     pb=pb_estimator,
                     logF=logF_estimator,
-                    on_policy=True,
+                    on_policy=True if args.replay_buffer_size == 0 else False,
                 )
             else:
-                parametrization = SubTBParametrization(
+                gflownet = SubTBGFlowNet(
                     pf=pf_estimator,
                     pb=pb_estimator,
                     logF=logF_estimator,
-                    on_policy=True,
-                    weighing=args.subTB_weighing,
+                    on_policy=True if args.replay_buffer_size == 0 else False,
+                    weighting=args.subTB_weighting,
                     lamda=args.subTB_lambda,
                 )
         elif args.loss == "TB":
-            # We need a LogZEstimator
-            logZ = LogZEstimator(tensor=torch.tensor(0.0, device=env.device))
-            parametrization = TBParametrization(
+            gflownet = TBGFlowNet(
                 pf=pf_estimator,
                 pb=pb_estimator,
-                logZ=logZ,
-                on_policy=True,
+                on_policy=True if args.replay_buffer_size == 0 else False,
             )
         elif args.loss == "ZVar":
-            parametrization = LogPartitionVarianceParametrization(
+            gflownet = LogPartitionVarianceGFlowNet(
                 pf=pf_estimator,
                 pb=pb_estimator,
-                on_policy=True,
+                on_policy=True if args.replay_buffer_size == 0 else False,
             )
 
-    assert parametrization is not None, f"No parametrization for loss {args.loss}"
+    assert gflownet is not None, f"No gflownet for loss {args.loss}"
 
-    # 3. Create the optimizer
-    params = [
-        {
-            "params": [
-                val
-                for key, val in parametrization.parameters.items()
-                if "logZ" not in key
-            ],
-            "lr": args.lr,
-        }
-    ]
-    if "logZ.logZ" in parametrization.parameters:
-        params.append(
-            {
-                "params": [parametrization.parameters["logZ.logZ"]],
-                "lr": args.lr_Z,
-            }
-        )
 
-    optimizer = torch.optim.Adam(params)
-
-    # 4. (optional) Create the replay buffer
+    # 3. (optional) Create the replay buffer
     replay_buffer = None
     if args.replay_buffer_size > 0:
         replay_buffer = ReplayBuffer(
             env, args.replay_buffer_type, "trajectories", args.replay_buffer_size
         )  # always keep trajectories so that you can compare them for the dist replay buffer name
 
+    # replay_buffer = None
+    # if args.replay_buffer_size > 0:
+    #     if args.loss in ("TB", "SubTB", "ZVar"):
+    #         objects_type = "trajectories"
+    #     elif args.loss in ("DB", "ModifiedDB"):
+    #         objects_type = "transitions"
+    #     elif args.loss == "FM":
+    #         objects_type = "states"
+    #     else:
+    #         raise NotImplementedError(f"Unknown loss: {args.loss}")
+    #     replay_buffer = ReplayBuffer(
+    #         env, objects_type=objects_type, capacity=args.replay_buffer_size
+    #     )
+
+    # 4. Create the optimizer
+    # Policy parameters have their own LR.
+    params = [
+        {
+            "params": [
+                v for k, v in dict(gflownet.named_parameters()).items() if k != "logZ"
+            ],
+            "lr": args.lr,
+        }
+    ]
+
+    # Log Z gets dedicated learning rate (typically higher).
+    if "logZ" in dict(gflownet.named_parameters()):
+        params.append(
+            {
+                "params": [dict(gflownet.named_parameters())["logZ"]],
+                "lr": args.lr_Z,
+            }
+        )
+
+    optimizer = torch.optim.Adam(params)
+
     visited_terminating_states = env.States.from_batch_shape((0,))
+
     states_visited = 0
     n_iterations = args.n_trajectories // args.batch_size
+    for iteration in trange(n_iterations):
+        # trajectories = gflownet.sample_trajectories(n_samples=args.batch_size)
+        # training_samples = gflownet.to_training_samples(trajectories)
+        # if replay_buffer is not None:
+        #     with torch.no_grad():
+        #         replay_buffer.add(training_samples)
+        #         training_objects = replay_buffer.sample(n_trajectories=args.batch_size)
+        # else:
+        #     training_objects = training_samples
+        #
 
-    for iteration in trange(n_iterations+1):
-        trajectories = parametrization.sample_trajectories(n_samples=args.batch_size)
+        trajectories = gflownet.sample_trajectories(n_samples=args.batch_size)
         states_visited += len(trajectories)
         visited_terminating_states.extend(trajectories.last_states)
 
@@ -191,14 +225,14 @@ def train_hypergrid(config, use_wandb):
                 replay_trajectories = replay_buffer.sample(n_trajectories=args.batch_size)
                 trajectories.extend(replay_trajectories)
 
-        training_samples = trajectories_to_training_samples(
-            trajectories, parametrization
-        )
+        training_samples = gflownet.to_training_samples(trajectories)
+
 
         optimizer.zero_grad()
-        loss = parametrization.loss(training_samples)
+        loss = gflownet.loss(training_samples)
         loss.backward()
         optimizer.step()
+
 
         to_log = {"loss": loss.item(), "states_visited": states_visited}
         if use_wandb:
@@ -206,7 +240,7 @@ def train_hypergrid(config, use_wandb):
         if iteration % args.validation_interval == 0:
             validation_info = validate(
                 env,
-                parametrization,
+                gflownet,
                 args.validation_samples,
                 visited_terminating_states,
             )
