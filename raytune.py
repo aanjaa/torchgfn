@@ -40,7 +40,8 @@ def run_tune(search_space, num_samples):
     # Save the search space by saving this file itself
     shutil.copy(__file__, os.path.join(log_dir + "/ray.py"))
     tuner = tune.Tuner(
-        tune.with_resources(functools.partial(train_hypergrid, use_wandb=False), {"cpu": 5.0, "gpu": 1.0}),
+        #tune.with_resources(functools.partial(train_hypergrid, use_wandb=False), {"cpu": 5.0, "gpu": 1.0}),
+        functools.partial(train_hypergrid, use_wandb=False),
         param_space=search_space,
         tune_config=tune.TuneConfig(
             metric=metric,

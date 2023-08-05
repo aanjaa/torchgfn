@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=raytune
-#SBATCH --partition=short-unkillable
+#SBATCH --partition=unkillable
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
-#SBATCH --cpus-per-task=5
-#SBATCH --mem-per-cpu=2GB
+#SBATCH --cpus-per-task=6
+#SBATCH --mem-per-cpu=4GB
 #SBATCH --gpus-per-task=1
 
 # Loading your environment
