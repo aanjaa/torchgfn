@@ -60,7 +60,7 @@ def train_hypergrid(config, use_wandb):
                 hidden_dim=args.hidden_dim,
                 n_hidden_layers=args.n_hidden,
             )
-        estimator = DiscretePolicyEstimator(env=env, module=module, forward=True)
+        estimator = DiscretePolicyEstimator(env=env, module=module, forward=True, greedy_eps=args.greedy_eps,temperature=args.temperature, sf_bias=args.sf_bias, epsilon=args.epsilon)
         gflownet = FMGFlowNet(estimator)
     else:
         pb_module = None
@@ -94,7 +94,7 @@ def train_hypergrid(config, use_wandb):
                 pb_module is not None
         ), f"pb_module is None. Command-line arguments: {args}"
 
-        pf_estimator = DiscretePolicyEstimator(env=env, module=pf_module, forward=True)
+        pf_estimator = DiscretePolicyEstimator(env=env, module=pf_module, forward=True, greedy_eps=args.greedy_eps,temperature=args.temperature, sf_bias=args.sf_bias, epsilon=args.epsilon)
         pb_estimator = DiscretePolicyEstimator(env=env, module=pb_module, forward=False)
 
         if args.loss == "ModifiedDB":
@@ -204,7 +204,7 @@ def train_hypergrid(config, use_wandb):
 
     states_visited = 0
     n_iterations = args.n_trajectories // args.batch_size
-    for iteration in trange(n_iterations):
+    for iteration in trange(n_iterations+1):
         # trajectories = gflownet.sample_trajectories(n_samples=args.batch_size)
         # training_samples = gflownet.to_training_samples(trajectories)
         # if replay_buffer is not None:
@@ -226,7 +226,6 @@ def train_hypergrid(config, use_wandb):
                 trajectories.extend(replay_trajectories)
 
         training_samples = gflownet.to_training_samples(trajectories)
-
 
         optimizer.zero_grad()
         loss = gflownet.loss(training_samples)
@@ -320,7 +319,7 @@ if __name__ == "__main__":
         "seed": 0,  # Random seed, if 0 then a random seed is used
         "batch_size": 6,  # Batch size, i.e. number of trajectories to sample per training iteration
         "loss": 'FM',  # Loss function to use
-        "subTB_weighing": 'geometric_within',  # Weighing scheme for SubTB
+        "subTB_weighting": 'geometric_within',  # Weighing scheme for SubTB
         "subTB_lambda": 0.9,  # Lambda parameter for SubTB
         "tabular": False,  # Use a lookup table for F, PF, PB instead of an estimator
         "uniform_pb": False,  # Use a uniform PB
@@ -340,7 +339,11 @@ if __name__ == "__main__":
         "reward_type": "default",  # Type of reward function
         "n_means": 4,  # Number of means for the GMM reward function
         "quantize_bins": 4,  # Number of quantization bins for the GMM reward function, if -1 no quantization is performed
-        "cov_scale": 7.0  # Scale of the covariance matrix for the GMM reward function
+        "cov_scale": 7.0,  # Scale of the covariance matrix for the GMM reward function
+        "greedy_eps": 0, # if > 0 , then we go off policy using greedy epsilon exploration
+        "temperature": 1.0,  # scalar to divide the logits by before softmax. Does nothing if greedy_eps is 0.
+        "sf_bias": 0.0, # scalar to subtract from the exit action logit before dividing by temperature. Does nothing if greedy_eps is 0.
+        "epsilon": 0.0, # with probability epsilon, a random action is chosen. Does nothing if greedy_eps is 0.
     }
 
     run_train(config, use_wandb=False, im_show=True)

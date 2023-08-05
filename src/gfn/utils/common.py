@@ -8,6 +8,8 @@ from gfn.containers import Trajectories, Transitions
 from gfn.env import Env
 from gfn.gflownet import GFlowNet, TBGFlowNet
 from gfn.states import States
+import numpy as np
+from scipy.special import kl_div
 
 
 def get_terminating_state_dist_pmf(env: Env, states: States) -> TT["n_states", float]:
@@ -19,6 +21,19 @@ def get_terminating_state_dist_pmf(env: Env, states: States) -> TT["n_states", f
     ]
 
     return torch.tensor(counter_list, dtype=torch.float) / len(states_indices)
+
+
+def calculate_kl_divergence(p, q):
+    """
+    Compute the Kullback-Leibler (KL) Divergence in a stable way.
+    p and q are numpy arrays of probabilities.
+    """
+
+    # Avoid division by 0 and log of 0
+    p = np.asarray(p) + np.finfo(float).eps
+    q = np.asarray(q) + np.finfo(float).eps
+
+    return np.sum(kl_div(p, q))
 
 
 def validate(
@@ -64,7 +79,9 @@ def validate(
 
     final_states_dist_pmf = get_terminating_state_dist_pmf(env, terminating_states)
     l1_dist = (final_states_dist_pmf - true_dist_pmf).abs().mean().item()
-    validation_info = {"l1_dist": l1_dist}
+    KL_forward = calculate_kl_divergence(true_dist_pmf, final_states_dist_pmf)
+    KL_reverse = calculate_kl_divergence(final_states_dist_pmf, true_dist_pmf)
+    validation_info = {"l1_dist": l1_dist, "KL_forward": KL_forward, "KL_reverse": KL_reverse}
     if logZ is not None:
         validation_info["logZ_diff"] = abs(logZ - true_logZ)
     return validation_info

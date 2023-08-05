@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name=raytune
-#SBATCH --partition=short-unkillable
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
 #SBATCH --cpus-per-task=5
@@ -60,9 +59,6 @@ for ((i = 1; i <= worker_num; i++)); do
     sleep 5
 done
 
-python raytune.py --experiment_name reward_losses
-python raytune.py --experiment_name smoothness_losses
-python raytune.py --experiment_name searchspaces_losses
 python raytune.py --experiment_name replay_and_capacity
-python raytune.py --experiment_name exploration_strategies
+
 
