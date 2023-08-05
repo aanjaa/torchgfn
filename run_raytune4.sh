@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=raytune
+#SBATCH --job-name=raytune4
 #SBATCH --partition=unkillable
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1

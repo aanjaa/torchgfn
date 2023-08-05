@@ -141,7 +141,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    folder_name = "logs"#"logs_cluster"
+    folder_name = "logs_test"#"logs_cluster"
     lr = tune.grid_search([0.1, 0.03, 0.01, 0.003, 0.001, 0.0003, 0.0001])
     subTB_lambda_grid = tune.grid_search([0.1, 0.3, 0.5, 0.7, 0.9])
     subTB_weighting = 'geometric_within'
@@ -310,7 +310,7 @@ if __name__ == "__main__":
                 "R2": 2.0,
                 "seed": seed,
                 "batch_size": batch_size,
-                "loss": 'TB',
+                "loss": None,
                 "subTB_weighting": None,
                 "subTB_lambda": None,
                 "tabular": False,
@@ -337,18 +337,27 @@ if __name__ == "__main__":
                 "epsilon": 0.0,
             }
 
-            #sampler_temperature = 1.0
-            #sampler_epsilon = 0.0
 
+            for loss in LOSSES:
+                for quantize_bins in [-1, 3, 7]:
+                    name = f"{loss}_{quantize_bins}bins"
 
-            for quantize_bins in [-1, 4, 10]:
-                name = "default_" + f"{quantize_bins}bins"
-                changes_config = {
-                    "quantize_bins": quantize_bins,
-                    "name": name,
-                }
-                search_spaces.append(
-                    change_config(copy.deepcopy(config), changes_config))
+                    if loss == "SubTB":
+                        changes_config = {
+                            "loss": loss,
+                            "quantize_bins": quantize_bins,
+                            "name": name,
+                            "subTB_lambda": subTB_lambda_grid,
+                            "subTB_weighting": subTB_weighting,
+                        }
+                    else:
+                        changes_config = {
+                            "loss": loss,
+                            "quantize_bins": quantize_bins,
+                            "name": name,
+                        }
+                    search_spaces.append(
+                        change_config(copy.deepcopy(config), changes_config))
 
         ## EXPERIMENT 4
         elif experiment_name == "replay_and_capacity":
