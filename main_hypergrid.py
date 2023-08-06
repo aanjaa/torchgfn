@@ -253,8 +253,8 @@ def train_hypergrid(config, use_wandb):
 
 def plot(reward_raw, states, im_show):
     reward = reward_raw.numpy()
-    x = states.states_tensor[:, :, 0]
-    y = states.states_tensor[:, :, 1]
+    x = states.tensor[:, :, 0]
+    y = states.tensor[:, :, 1]
 
     def plot2d(reward, x, y):
         # 2D plot
@@ -328,9 +328,9 @@ if __name__ == "__main__":
         "n_hidden": 2,  # Number of hidden layers (of size `hidden_dim`) in the estimators neural network modules
         "lr": 0.001,  # Learning rate for the estimators' modules
         "lr_Z": 0.1,  # Specific learning rate for Z (only used for TB loss)
-        "n_trajectories": int(16*1000),
+        "n_trajectories": int(16*1),
         # Total budget of trajectories to train on. Training iterations = n_trajectories // batch_size
-        "validation_interval": 100,  # How often (in training steps) to validate the parameterization
+        "validation_interval": 1,  # How often (in training steps) to validate the parameterization
         "validation_samples": 200000,  # Number of validation samples to use to evaluate the probability mass function.
         "experiment_name": '',  # Name of the wandb project. If empty, don't use wandb
         "name": 'test',  # Name of the run

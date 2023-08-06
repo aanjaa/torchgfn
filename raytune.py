@@ -30,7 +30,7 @@ def run_tune(search_space, num_samples):
     except:
         pass
 
-    metric = "l1_dist"
+    metric = "KL_forward" #"l1_dist"
 
     # save the search space
     # get current hour and minute and print them
@@ -141,7 +141,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    folder_name = "logs_test"#"logs_cluster"
+    folder_name = "logs"
     lr = tune.grid_search([0.1, 0.03, 0.01, 0.003, 0.001, 0.0003, 0.0001])
     subTB_lambda_grid = tune.grid_search([0.1, 0.3, 0.5, 0.7, 0.9])
     subTB_weighting = 'geometric_within'
@@ -228,77 +228,8 @@ if __name__ == "__main__":
                     search_spaces.append(
                         change_config(copy.deepcopy(config), changes_config))
 
-        ## EXPERIMENT 2: Which loss for higher ndim and height?
-        elif experiment_name == "searchspaces_losses":
-            batch_size = 16
-            config = {
-                "no_cuda": True,
-                "ndim": None,
-                "height": None,
-                "R0": 0.1,
-                "R1": 0.5,
-                "R2": 2.0,
-                "seed": seed,
-                "batch_size": batch_size,
-                "loss": None, ##
-                "subTB_weighting": None,
-                "subTB_lambda": None,
-                "tabular": False,
-                "uniform_pb": False,
-                "tied": True,
-                "hidden_dim": 256,
-                "n_hidden": 2,
-                "lr": lr,
-                "lr_Z": 0.1,
-                "n_trajectories": batch_size * n_iterations,  # Training iterations = n_trajectories // batch_size
-                "validation_interval": validation_interval,
-                "validation_samples": 10000,
-                "experiment_name": experiment_name,
-                "name": 'test',
-                "replay_buffer_size": 0,
-                "replay_buffer_type": None,
-                "reward_type": "default",
-                "n_means": None,
-                "quantize_bins": -1,
-                "cov_scale": 7.0,
-                "greedy_eps": 0,
-                "temperature": 1.0,
-                "sf_bias": 0.0,
-                "epsilon": 0.0,
-            }
 
-            #sampler_temperature = 1.0
-            #sampler_epsilon = 0.0
-
-            for loss_name in LOSSES:
-                for ndim, height in zip([2, 4], [8, 32]):
-
-                    n_means = int(2**int(ndim))
-                    name = "default_" + f"{ndim}d_{height}h_{loss_name}"
-
-                    if loss_name == "SubTB":
-                        changes_config = {
-                            "loss": loss_name,
-                            "ndim": ndim,
-                            "height": height,
-                            "name": name,
-                            "n_means": n_means,
-                            "subTB_lambda": subTB_lambda_grid,
-                            "subTB_weighting": subTB_weighting,
-                        }
-                    else:
-                        changes_config = {
-                            "loss": loss_name,
-                            "ndim": ndim,
-                            "height": height,
-                            "name": name,
-                            "n_means": n_means,
-                        }
-                    search_spaces.append(
-                        change_config(copy.deepcopy(config),changes_config))
-
-
-        ## EXPERIMENT 3: Which loss for more/less smoothness and height?
+        ## EXPERIMENT 2: Which loss for more/less smoothness and height?
         elif experiment_name == "smoothness_losses":
             batch_size = 16
             config = {
@@ -337,7 +268,6 @@ if __name__ == "__main__":
                 "epsilon": 0.0,
             }
 
-
             for loss in LOSSES:
                 for quantize_bins in [-1, 3, 7]:
                     name = f"{loss}_{quantize_bins}bins"
@@ -358,6 +288,74 @@ if __name__ == "__main__":
                         }
                     search_spaces.append(
                         change_config(copy.deepcopy(config), changes_config))
+
+        ## EXPERIMENT 3: Which loss for higher ndim and height?
+        elif experiment_name == "searchspaces_losses":
+            batch_size = 16
+            config = {
+                "no_cuda": True,
+                "ndim": None,
+                "height": None,
+                "R0": 0.1,
+                "R1": 0.5,
+                "R2": 2.0,
+                "seed": seed,
+                "batch_size": batch_size,
+                "loss": None,  ##
+                "subTB_weighting": None,
+                "subTB_lambda": None,
+                "tabular": False,
+                "uniform_pb": False,
+                "tied": True,
+                "hidden_dim": 256,
+                "n_hidden": 2,
+                "lr": lr,
+                "lr_Z": 0.1,
+                "n_trajectories": batch_size * n_iterations,  # Training iterations = n_trajectories // batch_size
+                "validation_interval": validation_interval,
+                "validation_samples": 10000,
+                "experiment_name": experiment_name,
+                "name": 'test',
+                "replay_buffer_size": 0,
+                "replay_buffer_type": None,
+                "reward_type": "default",
+                "n_means": None,
+                "quantize_bins": -1,
+                "cov_scale": 7.0,
+                "greedy_eps": 0,
+                "temperature": 1.0,
+                "sf_bias": 0.0,
+                "epsilon": 0.0,
+            }
+
+
+            for loss_name in LOSSES:
+                for ndim, height in zip([2, 4], [8, 32]):
+
+                    n_means = int(2 ** int(ndim))
+                    name = "default_" + f"{ndim}d_{height}h_{loss_name}"
+
+                    if loss_name == "SubTB":
+                        changes_config = {
+                            "loss": loss_name,
+                            "ndim": ndim,
+                            "height": height,
+                            "name": name,
+                            "n_means": n_means,
+                            "subTB_lambda": subTB_lambda_grid,
+                            "subTB_weighting": subTB_weighting,
+                        }
+                    else:
+                        changes_config = {
+                            "loss": loss_name,
+                            "ndim": ndim,
+                            "height": height,
+                            "name": name,
+                            "n_means": n_means,
+                        }
+                    search_spaces.append(
+                        change_config(copy.deepcopy(config), changes_config))
+
 
         ## EXPERIMENT 4
         elif experiment_name == "replay_and_capacity":

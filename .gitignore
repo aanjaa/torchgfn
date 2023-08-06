@@ -192,3 +192,4 @@ logs/
 logs_missing/
 logs_cluster/
 wandb/
+logs_dist/
