@@ -310,7 +310,10 @@ class HyperGrid(DiscreteEnv):
         height: height of the grid
         offset: offset of the grid
         """
+        np.random.seed(0)
         means = np.random.uniform(0+self.offset, self.height-self.offset, (self.n_means, self.ndim))
+        #means = torch.rand((self.n_means, self.ndim)) * (self.height - self.offset - self.offset) + self.offset
+        #means = means.numpy()
         return means
 
     def GMM_generate(self):

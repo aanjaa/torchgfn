@@ -60,5 +60,5 @@ for ((i = 1; i <= worker_num; i++)); do
     sleep 5
 done
 
-python raytune.py --experiment_name exploration_strategies
+python raytune.py --experiment_name exploration_strategies --folder logs
 

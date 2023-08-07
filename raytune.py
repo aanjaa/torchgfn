@@ -30,8 +30,6 @@ def run_tune(search_space, num_samples):
     except:
         pass
 
-    metric = "KL_forward" #"l1_dist"
-
     # save the search space
     # get current hour and minute and print them
     with open(os.path.join(log_dir + "/" + time.strftime("%d.%m_%H:%M:%S") + ".json"), 'w') as fp:
@@ -40,7 +38,7 @@ def run_tune(search_space, num_samples):
     # Save the search space by saving this file itself
     shutil.copy(__file__, os.path.join(log_dir + "/ray.py"))
     tuner = tune.Tuner(
-        #tune.with_resources(functools.partial(train_hypergrid, use_wandb=False), {"cpu": 5.0, "gpu": 1.0}),
+        #tune.with_resources(functools.partial(train_hypergrid, use_wandb=False), {"cpu": 1.0, "gpu": 1.0}),
         functools.partial(train_hypergrid, use_wandb=False),
         param_space=search_space,
         tune_config=tune.TuneConfig(
@@ -137,16 +135,18 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("--experiment_name", type=str,
-                        default="reward_losses") #["reward_losses", "smoothness_losses", ["searchspaces_losses"], ["replay_and_capacity"], ["exploration_strategies"]][-3]
-
+                        default="exploration_strategies") #["reward_losses", "smoothness_losses", ["searchspaces_losses"], ["replay_and_capacity"], ["exploration_strategies"]][-3]
+    parser.add_argument("--folder", type=str, default="logs_debug")
     args = parser.parse_args()
 
-    folder_name = "logs"
-    lr = tune.grid_search([0.1, 0.03, 0.01, 0.003, 0.001, 0.0003, 0.0001])
+    folder_name = args.folder
+    lr = tune.grid_search([0.03, 0.01, 0.003, 0.001, 0.0003, 0.0001])
     subTB_lambda_grid = tune.grid_search([0.1, 0.3, 0.5, 0.7, 0.9])
     subTB_weighting = 'geometric_within'
     n_iterations = 1000 #1000
     validation_interval = 100 #100
+
+    metric = "KL_forward"  # "l1_dist"
 
     average_over_multiple_seeds = False
     num_samples = 1
@@ -165,7 +165,7 @@ if __name__ == "__main__":
             config = {
                 "no_cuda": True,
                 "ndim": 2,
-                "height": None,
+                "height": 32,
                 "R0": 0.1,
                 "R1": 0.5,
                 "R2": 2.0,
@@ -179,7 +179,7 @@ if __name__ == "__main__":
                 "tied": True,
                 "hidden_dim": 256,
                 "n_hidden": 2,
-                "lr": lr,
+                "lr": lr ,
                 "lr_Z": 0.1,
                 "n_trajectories": batch_size * n_iterations,  # Training iterations = n_trajectories // batch_size
                 "validation_interval": validation_interval,
@@ -201,7 +201,8 @@ if __name__ == "__main__":
             #sampler_temperature = 1.0
             #sampler_epsilon = 0.0
 
-            for reward_name in REWARD_TYPES:
+            #for reward_name in REWARD_TYPES:
+            for reward_name in ["GMM-random"]: #########################TODO:remove!!!!!
                 for loss_name in LOSSES:
                     if reward_name == "cos":
                         height = 100
@@ -434,7 +435,7 @@ if __name__ == "__main__":
                 "n_hidden": 2,
                 "lr": lr,
                 "lr_Z": 0.1,
-                "n_trajectories": batch_size * n_iterations,  # 64!!
+                "n_trajectories": batch_size * n_iterations,
                 "validation_interval": validation_interval,
                 "validation_samples": 10000,
                 "experiment_name": experiment_name,
@@ -447,12 +448,12 @@ if __name__ == "__main__":
                 "cov_scale": 7.0,
                 "greedy_eps": None,
                 "temperature": None,
-                "sf_bias": None,
+                "sf_bias": 0.0,
                 "epsilon": None,
             }
 
             for greedy_eps in [0,1]:
-                if greedy_eps >= 0:
+                if greedy_eps == 1:
                     for temperature in [1.0, 5.0]:
                         for epsilon in [0.0, 0.1, 0.5]:
                             name = f"exploration{greedy_eps}_eps{epsilon}_temp{temperature}"
@@ -464,16 +465,16 @@ if __name__ == "__main__":
                             }
                             search_spaces.append(
                                 change_config(copy.deepcopy(config), changes_config))
-                else:
-                    name = f"exploration{greedy_eps}_eps{epsilon}_temp{temperature}"
+                elif greedy_eps == 0:
+                    name = f"exploration{greedy_eps}"
                     changes_config = {
                         "greedy_eps": greedy_eps,
-                        "temperature": temperature,
-                        "epsilon": epsilon,
                         "name": name,
                     }
                     search_spaces.append(
                         change_config(copy.deepcopy(config), changes_config))
+                else:
+                    raise ValueError("Invalid greedy_eps")
 
 
         else:

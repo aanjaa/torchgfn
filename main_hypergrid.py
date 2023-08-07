@@ -283,9 +283,10 @@ def plot(reward_raw, states, im_show):
     return fig2d, fig3d
 
 
-def run_train(config, use_wandb, im_show):
+def run_train(config, folder="logs", use_wandb=False, im_show=False):
     if use_wandb:
-        wandb.init(project=config["experiment_name"], name=config["name"])
+        experiment_name = config["experiment_name"]
+        wandb.init(project=f"{folder}_{experiment_name}", name=config["name"])
         wandb.config.update(config)
 
     to_log = train_hypergrid(config, use_wandb)
@@ -312,13 +313,13 @@ if __name__ == "__main__":
     config = {
         "no_cuda": True,  # Prevent CUDA usage
         "ndim": 2,  # Number of dimensions in the environment
-        "height": 64,  # Height of the environment
+        "height": 32,  # Height of the environment
         "R0": 0.1,  # Environment's R0
         "R1": 0.5,  # Environment's R1
         "R2": 2.0,  # Environment's R2
-        "seed": 0,  # Random seed, if 0 then a random seed is used
-        "batch_size": 6,  # Batch size, i.e. number of trajectories to sample per training iteration
-        "loss": 'FM',  # Loss function to use
+        "seed": 10,  # Random seed, if 0 then a random seed is used
+        "batch_size": 16,  # Batch size, i.e. number of trajectories to sample per training iteration
+        "loss": 'TB',  # Loss function to use
         "subTB_weighting": 'geometric_within',  # Weighing scheme for SubTB
         "subTB_lambda": 0.9,  # Lambda parameter for SubTB
         "tabular": False,  # Use a lookup table for F, PF, PB instead of an estimator
@@ -328,22 +329,22 @@ if __name__ == "__main__":
         "n_hidden": 2,  # Number of hidden layers (of size `hidden_dim`) in the estimators neural network modules
         "lr": 0.001,  # Learning rate for the estimators' modules
         "lr_Z": 0.1,  # Specific learning rate for Z (only used for TB loss)
-        "n_trajectories": int(16*1),
+        "n_trajectories": int(16*10),
         # Total budget of trajectories to train on. Training iterations = n_trajectories // batch_size
-        "validation_interval": 1,  # How often (in training steps) to validate the parameterization
+        "validation_interval": 10,  # How often (in training steps) to validate the parameterization
         "validation_samples": 200000,  # Number of validation samples to use to evaluate the probability mass function.
         "experiment_name": '',  # Name of the wandb project. If empty, don't use wandb
         "name": 'test',  # Name of the run
         "replay_buffer_size": 2,  # Size of the replay buffer
         "replay_buffer_type": "Dist",  # Type of the replay buffer
-        "reward_type": "default",  # Type of reward function
+        "reward_type": "GMM-random",  # Type of reward function
         "n_means": 4,  # Number of means for the GMM reward function
         "quantize_bins": 4,  # Number of quantization bins for the GMM reward function, if -1 no quantization is performed
         "cov_scale": 7.0,  # Scale of the covariance matrix for the GMM reward function
-        "greedy_eps": 0, # if > 0 , then we go off policy using greedy epsilon exploration
-        "temperature": 1.0,  # scalar to divide the logits by before softmax. Does nothing if greedy_eps is 0.
+        "greedy_eps": 1, # if > 0 , then we go off policy using greedy epsilon exploration
+        "temperature": 5.0,  # scalar to divide the logits by before softmax. Does nothing if greedy_eps is 0.
         "sf_bias": 0.0, # scalar to subtract from the exit action logit before dividing by temperature. Does nothing if greedy_eps is 0.
-        "epsilon": 0.0, # with probability epsilon, a random action is chosen. Does nothing if greedy_eps is 0.
+        "epsilon": 0.2, # with probability epsilon, a random action is chosen. Does nothing if greedy_eps is 0.
     }
 
-    run_train(config, use_wandb=False, im_show=True)
+    run_train(config, folder="logs_debug" , use_wandb=False, im_show=True)

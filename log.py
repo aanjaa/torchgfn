@@ -7,9 +7,10 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--experiment_name", type=str,
                     default="replay_and_capacity")
+parser.add_argument("--folder", type=str, default="logs")
 args = parser.parse_args()
 
-experiment_dir = os.path.join(os.getcwd(), "logs", args.experiment_name)
+experiment_dir = os.path.join(os.getcwd(), args.folder , args.experiment_name)
 for name in os.listdir(experiment_dir):  # [::-1]:
     best_config_dir = os.path.join(experiment_dir, name)
     with open(os.path.join(best_config_dir + "/best_config.json"), 'r') as fp:
@@ -17,4 +18,8 @@ for name in os.listdir(experiment_dir):  # [::-1]:
         # Rerun for 3 different seeds
         for seed in range(100,103):
             config["seed"] = seed
-            run_train(config,use_wandb=True,im_show=False)
+            try:
+                run_train(config,args.folder,use_wandb=True,im_show=False)
+            except:
+                print("Error in ", config)
+                continue
