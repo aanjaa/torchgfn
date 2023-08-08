@@ -232,11 +232,12 @@ def train_hypergrid(config, use_wandb):
         loss.backward()
         optimizer.step()
 
-
-        to_log = {"loss": loss.item(), "states_visited": states_visited}
-        if use_wandb:
-            wandb.log(to_log, step=iteration)
+        #to prevent not logging metric is errors
+        #to_log = {"loss": loss.item(), "states_visited": states_visited}
+        #if use_wandb:
+        #    wandb.log(to_log, step=iteration)
         if iteration % args.validation_interval == 0:
+            to_log = {"loss": loss.item(), "states_visited": states_visited}
             validation_info = validate(
                 env,
                 gflownet,

@@ -60,5 +60,5 @@ for ((i = 1; i <= worker_num; i++)); do
     sleep 5
 done
 
-python raytune.py --experiment_name smoothness_losses
+python raytune.py --experiment_name smoothness_losses --folder logs
 

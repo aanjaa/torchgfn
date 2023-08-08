@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("--experiment_name", type=str,
-                        default="exploration_strategies") #["reward_losses", "smoothness_losses", ["searchspaces_losses"], ["replay_and_capacity"], ["exploration_strategies"]][-3]
+                        default="searchspaces_losses") #["reward_losses", "smoothness_losses", ["searchspaces_losses"], ["replay_and_capacity"], ["exploration_strategies"]][-3]
     parser.add_argument("--folder", type=str, default="logs_debug")
     args = parser.parse_args()
 
@@ -143,8 +143,8 @@ if __name__ == "__main__":
     lr = tune.grid_search([0.03, 0.01, 0.003, 0.001, 0.0003, 0.0001])
     subTB_lambda_grid = tune.grid_search([0.1, 0.3, 0.5, 0.7, 0.9])
     subTB_weighting = 'geometric_within'
-    n_iterations = 1000 #1000
-    validation_interval = 100 #100
+    n_iterations = 1000  #1000
+    validation_interval = 100  #100
 
     metric = "KL_forward"  # "l1_dist"
 
@@ -179,7 +179,7 @@ if __name__ == "__main__":
                 "tied": True,
                 "hidden_dim": 256,
                 "n_hidden": 2,
-                "lr": lr ,
+                "lr": lr,
                 "lr_Z": 0.1,
                 "n_trajectories": batch_size * n_iterations,  # Training iterations = n_trajectories // batch_size
                 "validation_interval": validation_interval,
@@ -331,9 +331,9 @@ if __name__ == "__main__":
 
 
             for loss_name in LOSSES:
-                for ndim, height in zip([2, 4], [8, 32]):
-
-                    n_means = int(2 ** int(ndim))
+                #for ndim, height in zip([2, 4], [8, 32]):
+                for ndim, height in zip([3, 5], [16, 32]):
+                    #n_means = int(2 ** int(ndim))
                     name = "default_" + f"{ndim}d_{height}h_{loss_name}"
 
                     if loss_name == "SubTB":
@@ -342,7 +342,7 @@ if __name__ == "__main__":
                             "ndim": ndim,
                             "height": height,
                             "name": name,
-                            "n_means": n_means,
+                            "n_means": None,
                             "subTB_lambda": subTB_lambda_grid,
                             "subTB_weighting": subTB_weighting,
                         }
@@ -352,7 +352,7 @@ if __name__ == "__main__":
                             "ndim": ndim,
                             "height": height,
                             "name": name,
-                            "n_means": n_means,
+                            "n_means": None,
                         }
                     search_spaces.append(
                         change_config(copy.deepcopy(config), changes_config))
